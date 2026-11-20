@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { KeyRound, Plus, RefreshCw, ShieldAlert, Trash2, UserPlus } from "lucide-react";
+import { KeyRound, Plus, RefreshCw, ShieldAlert, Trash2, Upload, UserPlus } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { DashboardShell } from "@/components/nyxora/dashboard-shell";
 import { EntityBadge } from "@/components/nyxora/entity-badge";
@@ -33,9 +33,11 @@ import { ENTITY_TYPES, EntityType } from "@/features/review/types";
 import {
   ApiError,
   apiFetch,
+  apiUpload,
   AuditLogEntry,
   CustomRule,
   DiscoveredModel,
+  MarkdownRulesImportResult,
   ProviderConfigOut,
   ProviderDiscoveryResult,
   User,
@@ -58,6 +60,7 @@ export default function OwnerSettingsPage() {
   const [gpuKeyDraft, setGpuKeyDraft] = useState("");
   const [clearGpuKey, setClearGpuKey] = useState(false);
   const [rules, setRules] = useState<CustomRule[]>([]);
+  const [importingMarkdown, setImportingMarkdown] = useState(false);
   const [pattern, setPattern] = useState("");
   const [entityType, setEntityType] = useState<EntityType>("CUSTOM");
   const [isRegex, setIsRegex] = useState(false);
@@ -239,6 +242,40 @@ export default function OwnerSettingsPage() {
       setRules((prev) => prev.filter((r) => r.id !== ruleId));
     } catch (error) {
       setStatusMessage(error instanceof ApiError ? error.message : "Could not delete rule.");
+    }
+  }
+
+  async function handleImportRulesMarkdown(file: File) {
+    setImportingMarkdown(true);
+    setStatusMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await apiUpload<MarkdownRulesImportResult>(
+        "/rules/import-markdown",
+        formData,
+      );
+      if (result.created_rules.length > 0) {
+        setRules((prev) => [...result.created_rules, ...prev]);
+      }
+      if (result.rulebook_updated) {
+        setWs((prev) => (prev ? { ...prev, rulebook_prompt: result.rulebook_prompt } : prev));
+      }
+      const parts: string[] = [];
+      parts.push(`added ${result.created_rules.length} rule(s)`);
+      if (result.skipped_existing_count > 0) {
+        parts.push(`skipped ${result.skipped_existing_count} duplicate(s)`);
+      }
+      if (result.rulebook_updated) {
+        parts.push("updated the SLM privacy rulebook");
+      }
+      setStatusMessage(`Imported "${result.filename}": ${parts.join(", ")}.`);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof ApiError ? error.message : "Could not import Markdown rules file.",
+      );
+    } finally {
+      setImportingMarkdown(false);
     }
   }
 
@@ -629,13 +666,39 @@ export default function OwnerSettingsPage() {
 
           <TabsContent value="rules">
             <Card className="nyxora-surface rounded-3xl border ring-0">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-white">
-                  Company custom rules
-                </CardTitle>
-                <CardDescription className="text-white/60">
-                  Persisted in SQLite (/api/rules) and applied in Layer 1 filtering.
-                </CardDescription>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold text-white">
+                    Company custom rules
+                  </CardTitle>
+                  <CardDescription className="text-white/60">
+                    Persisted in SQLite (/api/rules) and applied in Layer 1 filtering. Or import a{" "}
+                    <code className="font-mono text-white/80">.md</code> policy file with{" "}
+                    <code className="font-mono text-white/80">- pattern | TYPE</code> lines and SLM
+                    rulebook notes.
+                  </CardDescription>
+                </div>
+                <label
+                  htmlFor="rules-md-upload"
+                  className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-[#9b82ff]/40 bg-[#7c5cff]/15 px-4 text-xs font-medium text-white transition-colors hover:bg-[#7c5cff]/25"
+                >
+                  <Upload className="size-3.5" aria-hidden="true" />
+                  <span>{importingMarkdown ? "Importing .md..." : "Import rules (.md)"}</span>
+                  <input
+                    id="rules-md-upload"
+                    type="file"
+                    accept=".md,.markdown,.txt"
+                    disabled={importingMarkdown}
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleImportRulesMarkdown(file);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
               </CardHeader>
               <CardContent className="space-y-6">
                 <form
