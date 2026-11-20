@@ -18,7 +18,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       AUTH_COOKIE_SECURE: "false"
       SEED_DEMO_USERS: "true"
-      VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-}
+      VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-ZGV2LW9ubHktMzItYnl0ZS1mZXJuZXQta2V5LTAwMDA=}
     volumes:
       - backend_data:/data
     depends_on:

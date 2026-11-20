@@ -4,7 +4,9 @@ from fastapi import FastAPI
 
 from app.config import get_settings
 from app.db import Base, SessionLocal, engine
+from app.routers.audit import router as audit_router
 from app.routers.auth import router as auth_router
+from app.routers.sessions import router as sessions_router
 from app.seed import seed_demo_users
 
 
@@ -21,6 +23,8 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Contract Privacy Gateway", lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(sessions_router)
+app.include_router(audit_router)
 
 
 @app.get("/health")

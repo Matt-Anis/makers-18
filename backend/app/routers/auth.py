@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import extract_session_token, get_current_user, require_roles
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.models import AuthSession, User, UserRole, utcnow
+from app.models import AuditLog, AuthSession, User, UserRole, utcnow
 from app.schemas.auth import CreateUserRequest, LoginRequest, UserOut
 from app.security import (
     generate_session_token,
@@ -57,6 +57,7 @@ def login(
         expires_at=now + timedelta(seconds=settings.auth_session_ttl_seconds),
     )
     db.add(auth_session)
+    db.add(AuditLog(user_id=user.id, action="auth.login"))
     db.commit()
 
     response.set_cookie(
@@ -85,6 +86,7 @@ def logout(
         auth_session = db.scalar(select(AuthSession).where(AuthSession.token_hash == token_hash))
         if auth_session is not None and auth_session.revoked_at is None:
             auth_session.revoked_at = utcnow()
+            db.add(AuditLog(user_id=auth_session.user_id, action="auth.logout"))
             db.commit()
 
     response.delete_cookie(
