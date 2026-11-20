@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Workspace" },
-  { href: "/rules", label: "Custom Rules", adminOnly: true },
+  { href: "/rules", label: "Custom Rules & Audit", adminOnly: true },
   { href: "/metrics", label: "Metrics" },
 ] as const;
 
@@ -21,7 +21,7 @@ export function DashboardShell({
   subtitle,
   children,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
   children: React.ReactNode;
 }) {
@@ -48,16 +48,18 @@ export function DashboardShell({
     );
   }
 
-  const visibleNav = NAV_ITEMS.filter((item) => !("adminOnly" in item && item.adminOnly) || user.role === "admin");
+  const visibleNav = NAV_ITEMS.filter(
+    (item) => !("adminOnly" in item && item.adminOnly) || user.role === "admin",
+  );
 
   return (
     <div className="nyxora-workspace-bg min-h-screen text-white">
-      <header className="sticky top-0 z-30 border-b border-[#6441A5]/35 bg-black/65 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-3.5">
-          <div className="flex flex-wrap items-center gap-6">
+      <header className="sticky top-0 z-40 border-b border-[#6441A5]/35 bg-black/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-5">
             <NyxoraWordmark href="/chat" className="text-lg sm:text-xl" />
 
-            <nav aria-label="Primary" className="flex items-center gap-1.5">
+            <nav aria-label="Primary" className="flex flex-wrap items-center gap-2">
               {visibleNav.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -66,10 +68,10 @@ export function DashboardShell({
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors",
+                      "rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] transition-all",
                       isActive
-                        ? "border border-[#9b72eb]/70 bg-[#6441A5]/35 text-white"
-                        : "border border-transparent text-white/65 hover:bg-white/5 hover:text-white",
+                        ? "bg-white text-black shadow-[0_0_20px_rgba(155,114,235,0.65)]"
+                        : "text-white/70 hover:bg-white/10 hover:text-white",
                     )}
                   >
                     {item.label}
@@ -96,7 +98,7 @@ export function DashboardShell({
               variant="outline"
               size="sm"
               onClick={handleSignOut}
-              className="rounded-full border-white/20 bg-white/5 text-white hover:border-[#9b72eb] hover:bg-[#6441A5]/30"
+              className="cursor-pointer rounded-full border-white/20 bg-white/5 text-white hover:border-[#9b72eb] hover:bg-[#6441A5]/30"
             >
               <LogOut className="size-3.5" aria-hidden="true" />
               <span>Sign out</span>
@@ -105,13 +107,15 @@ export function DashboardShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
-        <div className="space-y-1">
-          <h1 className="text-xl font-bold tracking-[0.12em] uppercase text-white sm:text-2xl">
-            {title}
-          </h1>
-          {subtitle ? <p className="text-sm text-white/60">{subtitle}</p> : null}
-        </div>
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+        {title ? (
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold uppercase tracking-[0.12em] text-white sm:text-2xl">
+              {title}
+            </h1>
+            {subtitle ? <p className="text-sm text-white/60">{subtitle}</p> : null}
+          </div>
+        ) : null}
         {children}
       </main>
     </div>
