@@ -7,7 +7,11 @@ from app.db import Base, SessionLocal, engine
 from app.routers.audit import router as audit_router
 from app.routers.auth import router as auth_router
 from app.routers.sessions import router as sessions_router
-from app.seed import seed_demo_users
+from app.seed import (
+    ensure_default_workspace_settings,
+    normalize_legacy_roles,
+    seed_demo_users,
+)
 
 
 @asynccontextmanager
@@ -15,8 +19,10 @@ async def lifespan(_app: FastAPI):
     """Initialize relational tables and optionally seed demo accounts on startup."""
     Base.metadata.create_all(bind=engine)
     settings = get_settings()
-    if settings.seed_demo_users:
-        with SessionLocal() as db:
+    with SessionLocal() as db:
+        normalize_legacy_roles(db)
+        ensure_default_workspace_settings(db)
+        if settings.seed_demo_users:
             seed_demo_users(db)
     yield
 

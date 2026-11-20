@@ -1,16 +1,13 @@
 from dataclasses import dataclass, field
 from functools import lru_cache
 import json
-import logging
 import re
 from typing import Protocol
 
-from cryptography.fernet import Fernet
 import redis
 
 from app.config import get_settings
-
-logger = logging.getLogger(__name__)
+from app.security import build_fernet
 
 
 @dataclass
@@ -71,14 +68,7 @@ class VaultCipher:
     """Encrypts and decrypts serialized vault payloads with Fernet symmetric encryption."""
 
     def __init__(self, fernet_key: str, app_env: str) -> None:
-        if fernet_key:
-            key_bytes = fernet_key.encode("utf-8")
-        elif app_env == "production":
-            raise RuntimeError("VAULT_ENCRYPTION_KEY must be set in production")
-        else:
-            logger.warning("VAULT_ENCRYPTION_KEY not set; generating ephemeral key for %s", app_env)
-            key_bytes = Fernet.generate_key()
-        self._fernet = Fernet(key_bytes)
+        self._fernet = build_fernet(fernet_key, app_env)
 
     def encrypt(self, vault: VaultData) -> bytes:
         return self._fernet.encrypt(vault.to_json_bytes())

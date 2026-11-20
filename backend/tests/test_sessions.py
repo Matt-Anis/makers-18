@@ -36,23 +36,23 @@ def session_env(
         db.add_all(
             [
                 User(
-                    email="admin@acme.local",
-                    full_name="Admin User",
-                    role=UserRole.ADMIN.value,
-                    password_hash=hash_password("admin-secret-123"),
+                    email="owner@acme.local",
+                    full_name="Workspace Owner",
+                    role=UserRole.OWNER.value,
+                    password_hash=hash_password("owner-secret-123"),
                     is_active=True,
                 ),
                 User(
                     email="anis@acme.local",
-                    full_name="Anis Requester",
-                    role=UserRole.REQUESTER.value,
+                    full_name="Anis User",
+                    role=UserRole.USER.value,
                     password_hash=hash_password("anis-secret-123"),
                     is_active=True,
                 ),
                 User(
                     email="samira@acme.local",
-                    full_name="Samira Reviewer",
-                    role=UserRole.REVIEWER.value,
+                    full_name="Samira User",
+                    role=UserRole.USER.value,
                     password_hash=hash_password("samira-secret-123"),
                     is_active=True,
                 ),
@@ -123,9 +123,9 @@ def test_gateway_session_ownership_isolation_and_wipe(session_env) -> None:
     assert not vault_store.exists(session_id)
     assert client.get("/sessions").json() == []
 
-    # Audit log is admin-only and records metadata events.
+    # Audit log is owner-only and records metadata events.
     assert client.get("/audit").status_code == 403
-    _login(client, "admin@acme.local", "admin-secret-123")
+    _login(client, "owner@acme.local", "owner-secret-123")
     audit_resp = client.get("/audit")
     assert audit_resp.status_code == 200
     actions = [item["action"] for item in audit_resp.json()]

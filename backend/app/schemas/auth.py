@@ -23,12 +23,12 @@ class LoginRequest(BaseModel):
 
 
 class CreateUserRequest(BaseModel):
-    """Admin-only payload to provision a workspace account."""
+    """Owner-only payload to provision a workspace account."""
 
     email: str
     full_name: str = Field(min_length=1, max_length=120)
     password: str = Field(min_length=8, max_length=256)
-    role: UserRole = UserRole.REQUESTER
+    role: UserRole = UserRole.USER
 
     @field_validator("email")
     @classmethod

@@ -107,20 +107,20 @@ def me(current_user: User = Depends(get_current_user)) -> User:
 
 @router.get("/users", response_model=list[UserOut])
 def list_users(
-    _admin: User = Depends(require_roles(UserRole.ADMIN)),
+    _owner: User = Depends(require_roles(UserRole.OWNER)),
     db: Session = Depends(get_db),
 ) -> list[User]:
-    """List provisioned accounts (admin only)."""
+    """List provisioned accounts (owner only)."""
     return list(db.scalars(select(User).order_by(User.created_at.asc())))
 
 
 @router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def create_user(
     payload: CreateUserRequest,
-    _admin: User = Depends(require_roles(UserRole.ADMIN)),
+    _owner: User = Depends(require_roles(UserRole.OWNER)),
     db: Session = Depends(get_db),
 ) -> User:
-    """Provision a new workspace account (admin only; no public self-registration)."""
+    """Provision a new workspace account (owner only; no public self-registration)."""
     existing = db.scalar(select(User).where(User.email == payload.email))
     if existing is not None:
         raise HTTPException(
