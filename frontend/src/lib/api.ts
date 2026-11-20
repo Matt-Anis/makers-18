@@ -158,6 +158,14 @@ export interface CustomRule {
   created_at: string;
 }
 
+export interface MarkdownRulesImportResult {
+  filename: string;
+  created_rules: CustomRule[];
+  skipped_existing_count: number;
+  rulebook_updated: boolean;
+  rulebook_prompt: string;
+}
+
 export class ApiError extends Error {
   status: number;
 
