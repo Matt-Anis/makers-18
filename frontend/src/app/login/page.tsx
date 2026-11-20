@@ -50,15 +50,15 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 py-12 text-white">
+    <main className="nyxora-unified-page-bg relative flex min-h-screen w-full flex-col items-center justify-center px-4 py-12 text-white">
       <NyxoraWordmark href="/" className="mb-8 text-2xl sm:text-3xl" />
 
-      <Card className="nyxora-surface w-full max-w-md gap-6 rounded-3xl border p-6 ring-0 sm:p-8">
+      <Card className="nyx-glass-features-frame w-full max-w-md gap-6 rounded-3xl border border-white/15 bg-transparent p-6 text-white ring-0 sm:p-8">
         <CardHeader className="p-0 text-center">
           <CardTitle id="signin-heading" className="text-xl font-semibold text-white sm:text-2xl">
             Sign in
           </CardTitle>
-          <CardDescription className="mt-1 text-sm text-white/60">
+          <CardDescription className="mt-1 text-sm text-white/65">
             Access your private contract workspace
           </CardDescription>
         </CardHeader>
@@ -96,7 +96,7 @@ export default function SignInPage() {
                   if (errorMessage) setErrorMessage(null);
                 }}
                 placeholder="you@company.com"
-                className="h-11 rounded-2xl px-4"
+                className="h-11 rounded-2xl border-white/10 bg-[#222026] px-4 text-white placeholder:text-white/35 focus-visible:border-[#23969D] focus-visible:ring-[#23969D]/30"
               />
             </div>
 
@@ -110,7 +110,7 @@ export default function SignInPage() {
                   aria-pressed={showPassword}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="cursor-pointer rounded-full px-2 py-0.5 text-xs font-medium text-white/60 transition-colors duration-200 hover:text-white"
+                  className="cursor-pointer rounded-full px-2 py-0.5 text-xs font-medium text-[#23969D] transition-colors duration-200 hover:text-white"
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
@@ -130,14 +130,14 @@ export default function SignInPage() {
                   if (errorMessage) setErrorMessage(null);
                 }}
                 placeholder="••••••••"
-                className="h-11 rounded-2xl px-4"
+                className="h-11 rounded-2xl border-white/10 bg-[#222026] px-4 text-white placeholder:text-white/35 focus-visible:border-[#23969D] focus-visible:ring-[#23969D]/30"
               />
             </div>
 
             <Button
               type="submit"
               disabled={submitting}
-              className="mt-2 h-11 w-full cursor-pointer rounded-full bg-white text-sm font-semibold text-zinc-950 hover:bg-white/90"
+              className="mt-2 h-11 w-full cursor-pointer rounded-full bg-[#23969D] text-sm font-semibold text-white shadow-[0_0_20px_rgba(35,150,157,0.35)] transition-all hover:bg-[#006268]"
             >
               {submitting ? "Signing in..." : "Sign in"}
             </Button>
