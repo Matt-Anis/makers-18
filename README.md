@@ -12,6 +12,12 @@ From the repo root, build and start both apps.
 docker compose up --build
 ```
 
+For development with live hot reload on both `frontend/` (`next dev`) and `backend/app/` (`uvicorn --reload`), run:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml up --build
+```
+
 Open the frontend at `http://127.0.0.1:3000`. Check the API with this command.
 
 ```bash
