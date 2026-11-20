@@ -50,39 +50,33 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="nyxora-animated-bg relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden px-4 py-12 text-white">
+    <main className="nyxora-ambient-bg relative flex min-h-screen w-full flex-col items-center justify-center px-4 py-12 text-white">
       <NyxoraWordmark href="/" className="mb-8 text-2xl sm:text-3xl" />
 
-      <Card className="nyxora-glass w-full max-w-md gap-6 rounded-2xl border p-7 text-white shadow-[0_0_55px_rgba(100,65,165,0.32)] ring-0 sm:p-8">
+      <Card className="nyxora-surface w-full max-w-md gap-6 rounded-2xl border p-7 ring-0 sm:p-8">
         <CardHeader className="p-0 text-center">
-          <CardTitle
-            id="signin-heading"
-            className="text-xl font-bold uppercase tracking-[0.15em] text-white sm:text-2xl"
-          >
-            Sign In
+          <CardTitle id="signin-heading" className="text-xl font-semibold text-white sm:text-2xl">
+            Sign in
           </CardTitle>
-          <CardDescription className="mt-1.5 text-xs tracking-wide text-white/60 sm:text-sm">
+          <CardDescription className="mt-1 text-sm text-white/60">
             Access your private contract workspace
           </CardDescription>
         </CardHeader>
 
         <CardContent className="p-0">
-          <form onSubmit={handleSubmit} aria-labelledby="signin-heading" className="space-y-5">
+          <form onSubmit={handleSubmit} aria-labelledby="signin-heading" className="space-y-4">
             {errorMessage ? (
               <Alert
                 variant="destructive"
-                className="rounded-xl border-red-400/50 bg-red-950/60 text-red-200"
+                className="rounded-lg border-red-500/35 bg-red-500/10 text-red-200"
               >
                 <AlertCircle aria-hidden="true" />
                 <AlertDescription className="text-red-200">{errorMessage}</AlertDescription>
               </Alert>
             ) : null}
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-xs font-semibold uppercase tracking-[0.15em] text-white/80"
-              >
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium text-white/85">
                 Email
               </Label>
               <Input
@@ -102,16 +96,13 @@ export default function SignInPage() {
                   if (errorMessage) setErrorMessage(null);
                 }}
                 placeholder="you@company.com"
-                className="h-auto rounded-xl border-white/15 bg-white/5 px-4 py-3 text-base text-white placeholder:text-white/35 focus-visible:border-[#9b72eb] focus-visible:ring-[#9b72eb]/40 md:text-sm"
+                className="h-11 rounded-lg border-white/12 bg-white/[0.04] px-3.5 text-base text-white placeholder:text-white/35 transition-[border-color,background-color] duration-150 hover:border-white/20 focus-visible:border-[#8b6eff] focus-visible:ring-2 focus-visible:ring-[#8b6eff]/25 md:text-sm"
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="password"
-                  className="text-xs font-semibold uppercase tracking-[0.15em] text-white/80"
-                >
+                <Label htmlFor="password" className="text-sm font-medium text-white/85">
                   Password
                 </Label>
                 <button
@@ -119,7 +110,7 @@ export default function SignInPage() {
                   aria-pressed={showPassword}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="cursor-pointer text-[11px] text-[#b896ff] transition-colors hover:text-white"
+                  className="cursor-pointer text-xs font-medium text-white/60 transition-colors duration-150 hover:text-white"
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
@@ -139,16 +130,16 @@ export default function SignInPage() {
                   if (errorMessage) setErrorMessage(null);
                 }}
                 placeholder="••••••••"
-                className="h-auto rounded-xl border-white/15 bg-white/5 px-4 py-3 text-base text-white placeholder:text-white/35 focus-visible:border-[#9b72eb] focus-visible:ring-[#9b72eb]/40 md:text-sm"
+                className="h-11 rounded-lg border-white/12 bg-white/[0.04] px-3.5 text-base text-white placeholder:text-white/35 transition-[border-color,background-color] duration-150 hover:border-white/20 focus-visible:border-[#8b6eff] focus-visible:ring-2 focus-visible:ring-[#8b6eff]/25 md:text-sm"
               />
             </div>
 
             <Button
               type="submit"
               disabled={submitting}
-              className="mt-2 h-auto w-full cursor-pointer rounded-full bg-white py-3.5 text-xs font-bold uppercase tracking-[0.18em] text-black shadow-[0_0_25px_rgba(100,65,165,0.45)] transition-all duration-300 hover:bg-[#6441A5] hover:text-white hover:shadow-[0_0_35px_rgba(155,114,235,0.85)] sm:text-sm"
+              className="mt-2 h-11 w-full cursor-pointer rounded-lg bg-white text-sm font-semibold text-zinc-950 hover:bg-white/90"
             >
-              {submitting ? "Signing In..." : "Sign In"}
+              {submitting ? "Signing in..." : "Sign in"}
             </Button>
           </form>
         </CardContent>

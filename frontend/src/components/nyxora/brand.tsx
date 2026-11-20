@@ -19,7 +19,7 @@ export function NyxoraWordmark({
       href={href}
       className={cn(
         duneRise.className,
-        "tracking-[0.25em] uppercase text-white drop-shadow-[0_0_20px_rgba(100,65,165,0.6)] transition-opacity hover:opacity-90",
+        "uppercase tracking-[0.22em] text-white transition-opacity duration-150 ease-out hover:opacity-80",
         className,
       )}
     >

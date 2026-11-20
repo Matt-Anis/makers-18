@@ -39,27 +39,27 @@ export default function MetricsPage() {
       title="Evaluation & Ablation Metrics"
       subtitle="Recall, precision, leak-free contract rate, layer-by-layer ablation, and unmask round-trip accuracy."
     >
-      <Alert className="nyxora-glass rounded-2xl border-[#9b72eb]/45 text-white">
-        <Info className="text-[#b896ff]" aria-hidden="true" />
+      <Alert className="nyxora-surface rounded-xl border-white/12 text-white">
+        <Info className="text-[#a78bfa]" aria-hidden="true" />
         <AlertTitle>Awaiting evaluation run</AlertTitle>
-        <AlertDescription className="text-white/65">
-          Run the evaluation suite and wire <code className="font-mono text-[#d6c2ff]">GET /metrics/latest</code> to populate real recall, precision, and ablation numbers.
+        <AlertDescription className="text-white/60">
+          Run the evaluation suite and wire <code className="font-mono text-[#a78bfa]">GET /metrics/latest</code> to populate real recall, precision, and ablation numbers.
         </AlertDescription>
       </Alert>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Overall Recall", value: "—", hint: "Target: maximize catch rate" },
-          { label: "Overall Precision", value: "—", hint: "False-positive balance" },
-          { label: "Leak-Free Contracts", value: "—", hint: "Zero missed entities" },
-          { label: "Unmask Round Trip", value: "—", hint: "Target: 100% exact restore" },
+          { label: "Overall recall", value: "—", hint: "Target: maximize catch rate" },
+          { label: "Overall precision", value: "—", hint: "False-positive balance" },
+          { label: "Leak-free contracts", value: "—", hint: "Zero missed entities" },
+          { label: "Unmask round trip", value: "—", hint: "Target: 100% exact restore" },
         ].map((kpi) => (
-          <Card key={kpi.label} className="nyxora-glass rounded-2xl border ring-0">
+          <Card key={kpi.label} className="nyxora-surface rounded-xl border ring-0">
             <CardHeader className="pb-1">
-              <CardDescription className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
+              <CardDescription className="text-xs font-medium text-white/60">
                 {kpi.label}
               </CardDescription>
-              <CardTitle className="font-mono text-2xl font-bold text-white">
+              <CardTitle className="font-mono text-2xl font-semibold text-white">
                 {kpi.value}
               </CardTitle>
             </CardHeader>
@@ -69,20 +69,20 @@ export default function MetricsPage() {
       </div>
 
       <Tabs defaultValue="synthetic" className="space-y-4">
-        <TabsList className="rounded-full border border-[#6441A5]/40 bg-black/50 p-1">
-          <TabsTrigger value="synthetic" className="rounded-full px-4 text-xs uppercase tracking-wider">
-            Synthetic Set (50–100)
+        <TabsList className="rounded-lg border border-white/10 bg-white/[0.04] p-1">
+          <TabsTrigger value="synthetic" className="rounded-md px-3 text-xs">
+            Synthetic set (50–100)
           </TabsTrigger>
-          <TabsTrigger value="realistic" className="rounded-full px-4 text-xs uppercase tracking-wider">
-            Realistic Public Set (10–20)
+          <TabsTrigger value="realistic" className="rounded-md px-3 text-xs">
+            Realistic public set (10–20)
           </TabsTrigger>
         </TabsList>
 
         {(["synthetic", "realistic"] as const).map((tab) => (
           <TabsContent key={tab} value={tab} className="grid gap-6 lg:grid-cols-2">
-            <Card className="nyxora-glass rounded-2xl border ring-0">
+            <Card className="nyxora-surface rounded-xl border ring-0">
               <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-[0.14em] text-white">
+                <CardTitle className="text-base font-semibold text-white">
                   Per-entity recall &amp; precision
                 </CardTitle>
                 <CardDescription className="text-white/60">
@@ -95,20 +95,14 @@ export default function MetricsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-transparent">
-                      <TableHead className="text-xs uppercase tracking-wider text-white/60">
-                        Entity
-                      </TableHead>
-                      <TableHead className="text-right text-xs uppercase tracking-wider text-white/60">
-                        Recall
-                      </TableHead>
-                      <TableHead className="text-right text-xs uppercase tracking-wider text-white/60">
-                        Precision
-                      </TableHead>
+                      <TableHead className="text-xs text-white/55">Entity</TableHead>
+                      <TableHead className="text-right text-xs text-white/55">Recall</TableHead>
+                      <TableHead className="text-right text-xs text-white/55">Precision</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {ENTITY_PLACEHOLDERS.map((row) => (
-                      <TableRow key={row.type} className="border-white/10 hover:bg-white/5">
+                      <TableRow key={row.type} className="border-white/[0.07] hover:bg-white/[0.03]">
                         <TableCell>
                           <EntityBadge entityType={row.type} />
                         </TableCell>
@@ -125,9 +119,9 @@ export default function MetricsPage() {
               </CardContent>
             </Card>
 
-            <Card className="nyxora-glass rounded-2xl border ring-0">
+            <Card className="nyxora-surface rounded-xl border ring-0">
               <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-[0.14em] text-white">
+                <CardTitle className="text-base font-semibold text-white">
                   Layer-by-layer ablation
                 </CardTitle>
                 <CardDescription className="text-white/60">
@@ -140,7 +134,7 @@ export default function MetricsPage() {
                     <ProgressLabel className="text-xs text-white/80">
                       {layer.label}
                     </ProgressLabel>
-                    <ProgressValue className="font-mono text-xs text-[#b896ff]">
+                    <ProgressValue className="font-mono text-xs text-[#a78bfa]">
                       {() => "—"}
                     </ProgressValue>
                   </Progress>

@@ -85,11 +85,11 @@ export default function RulesPage() {
 
   return (
     <DashboardShell
-      title="Custom Rules & Audit"
+      title="Rules & Audit"
       subtitle="Manage company-specific keywords/regex patterns and inspect metadata-only audit events."
     >
       {user?.role !== "admin" ? (
-        <Alert className="nyxora-glass rounded-2xl border-amber-400/45 text-amber-100">
+        <Alert className="nyxora-surface rounded-xl border-amber-400/35 text-amber-100">
           <ShieldAlert aria-hidden="true" />
           <AlertTitle>Admin access required</AlertTitle>
           <AlertDescription className="text-amber-200/80">
@@ -98,17 +98,17 @@ export default function RulesPage() {
         </Alert>
       ) : (
         <>
-          <Card className="nyxora-glass rounded-2xl border ring-0">
+          <Card className="nyxora-surface rounded-xl border ring-0">
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="text-sm font-bold uppercase tracking-[0.14em] text-white">
+                <CardTitle className="text-base font-semibold text-white">
                   Company custom rules
                 </CardTitle>
                 <Badge
                   variant="outline"
-                  className="border-[#9b72eb]/45 bg-[#6441A5]/20 text-[11px] text-[#d6c2ff]"
+                  className="border-white/12 bg-white/[0.04] text-xs text-white/65"
                 >
-                  Local preview &middot; awaiting /rules API
+                  Local preview · awaiting /rules API
                 </Badge>
               </div>
               <CardDescription className="text-white/60">
@@ -120,11 +120,8 @@ export default function RulesPage() {
                 onSubmit={handleAddRule}
                 className="grid gap-4 sm:grid-cols-[1fr_180px_auto_auto] sm:items-end"
               >
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="rule-pattern"
-                    className="text-xs font-semibold uppercase tracking-[0.14em] text-white/80"
-                  >
+                <div className="space-y-1.5">
+                  <Label htmlFor="rule-pattern" className="text-xs font-medium text-white/75">
                     Keyword or regex pattern
                   </Label>
                   <Input
@@ -133,15 +130,12 @@ export default function RulesPage() {
                     value={pattern}
                     onChange={(e) => setPattern(e.target.value)}
                     placeholder="e.g. PROJECT-ORION"
-                    className="h-10 rounded-xl border-white/15 bg-white/5 px-3.5 font-mono text-sm text-white placeholder:text-white/35"
+                    className="h-9 rounded-lg border-white/12 bg-white/[0.04] px-3 font-mono text-sm text-white placeholder:text-white/35"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="rule-type"
-                    className="text-xs font-semibold uppercase tracking-[0.14em] text-white/80"
-                  >
+                <div className="space-y-1.5">
+                  <Label htmlFor="rule-type" className="text-xs font-medium text-white/75">
                     Entity type
                   </Label>
                   <Select
@@ -152,11 +146,11 @@ export default function RulesPage() {
                   >
                     <SelectTrigger
                       id="rule-type"
-                      className="h-10 w-full rounded-xl border-white/15 bg-white/5 px-3 text-xs text-white"
+                      className="h-9 w-full rounded-lg border-white/12 bg-white/[0.04] px-3 text-xs text-white"
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-[#6441A5]/50 bg-[#140d24] text-white">
+                    <SelectContent className="border-white/12 bg-[#161322] text-white">
                       {ENTITY_TYPES.map((item) => (
                         <SelectItem key={item} value={item} className="text-xs">
                           {item}
@@ -166,49 +160,39 @@ export default function RulesPage() {
                   </Select>
                 </div>
 
-                <div className="flex h-10 items-center gap-2.5 px-1">
+                <div className="flex h-9 items-center gap-2 px-1">
                   <Switch
                     id="rule-regex"
                     checked={isRegex}
                     onCheckedChange={(checked) => setIsRegex(checked)}
                   />
-                  <Label htmlFor="rule-regex" className="text-xs text-white/80">
+                  <Label htmlFor="rule-regex" className="text-xs text-white/75">
                     Regex
                   </Label>
                 </div>
 
                 <Button
                   type="submit"
-                  className="h-10 cursor-pointer rounded-full bg-white px-5 text-xs font-bold uppercase tracking-[0.14em] text-black hover:bg-[#6441A5] hover:text-white"
+                  className="h-9 cursor-pointer bg-white px-4 text-xs font-semibold text-zinc-950 hover:bg-white/90"
                 >
                   <Plus className="size-3.5" aria-hidden="true" />
-                  <span>Add Rule</span>
+                  <span>Add rule</span>
                 </Button>
               </form>
 
               <Table>
                 <TableHeader>
                   <TableRow className="border-white/10 hover:bg-transparent">
-                    <TableHead className="text-xs uppercase tracking-wider text-white/60">
-                      Pattern
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-white/60">
-                      Type
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-white/60">
-                      Mode
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-white/60">
-                      Enabled
-                    </TableHead>
-                    <TableHead className="text-right text-xs uppercase tracking-wider text-white/60">
-                      Action
-                    </TableHead>
+                    <TableHead className="text-xs text-white/55">Pattern</TableHead>
+                    <TableHead className="text-xs text-white/55">Type</TableHead>
+                    <TableHead className="text-xs text-white/55">Mode</TableHead>
+                    <TableHead className="text-xs text-white/55">Enabled</TableHead>
+                    <TableHead className="text-right text-xs text-white/55">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rules.map((rule) => (
-                    <TableRow key={rule.id} className="border-white/10 hover:bg-white/5">
+                    <TableRow key={rule.id} className="border-white/[0.07] hover:bg-white/[0.03]">
                       <TableCell className="font-mono text-xs text-white">
                         {rule.pattern}
                       </TableCell>
@@ -240,7 +224,7 @@ export default function RulesPage() {
                           onClick={() =>
                             setRules((prev) => prev.filter((item) => item.id !== rule.id))
                           }
-                          className="cursor-pointer text-white/60 hover:bg-red-500/20 hover:text-red-200"
+                          className="cursor-pointer text-white/60 hover:bg-red-500/15 hover:text-red-200"
                         >
                           <Trash2 className="size-3.5" aria-hidden="true" />
                         </Button>
@@ -252,13 +236,13 @@ export default function RulesPage() {
             </CardContent>
           </Card>
 
-          <Card className="nyxora-glass rounded-2xl border ring-0">
+          <Card className="nyxora-surface rounded-xl border ring-0">
             <CardHeader>
-              <CardTitle className="text-sm font-bold uppercase tracking-[0.14em] text-white">
+              <CardTitle className="text-base font-semibold text-white">
                 Metadata-only audit log
               </CardTitle>
               <CardDescription className="text-white/60">
-                Live from GET /api/audit &middot; Never stores raw text, prompts, or vault mappings.
+                Live from GET /api/audit · Never stores raw text, prompts, or vault mappings.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -268,24 +252,16 @@ export default function RulesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-transparent">
-                      <TableHead className="text-xs uppercase tracking-wider text-white/60">
-                        Event
-                      </TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider text-white/60">
-                        Provider
-                      </TableHead>
-                      <TableHead className="text-xs uppercase tracking-wider text-white/60">
-                        Session
-                      </TableHead>
-                      <TableHead className="text-right text-xs uppercase tracking-wider text-white/60">
-                        Timestamp
-                      </TableHead>
+                      <TableHead className="text-xs text-white/55">Event</TableHead>
+                      <TableHead className="text-xs text-white/55">Provider</TableHead>
+                      <TableHead className="text-xs text-white/55">Session</TableHead>
+                      <TableHead className="text-right text-xs text-white/55">Timestamp</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {auditLogs.map((entry) => (
-                      <TableRow key={entry.id} className="border-white/10 hover:bg-white/5">
-                        <TableCell className="font-mono text-xs text-[#d6c2ff]">
+                      <TableRow key={entry.id} className="border-white/[0.07] hover:bg-white/[0.03]">
+                        <TableCell className="font-mono text-xs text-[#a78bfa]">
                           {entry.action}
                         </TableCell>
                         <TableCell className="text-xs text-white/75">

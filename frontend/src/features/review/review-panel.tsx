@@ -148,20 +148,19 @@ export function ReviewPanel({
   }
 
   return (
-    <Card className="rounded-2xl border border-amber-400/50 bg-black/70 backdrop-blur-xl ring-0 shadow-[0_0_40px_rgba(100,65,165,0.35)]">
-      <CardHeader className="space-y-2">
-        <div>
+    <Card className="nyxora-surface rounded-xl border border-amber-400/35 ring-0">
+      <CardHeader className="space-y-1.5">
+        <div className="flex items-center gap-2">
           <Badge
             variant="outline"
-            className="border-amber-400/45 bg-amber-500/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-200"
+            className="border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-200"
           >
-            Needs Human Review
+            Needs human review
           </Badge>
         </div>
         <CardTitle className="sr-only">Review detected sensitive findings</CardTitle>
-        <CardDescription className="text-xs text-white/65">
-          Verify detected entities below, or highlight any missed text with your cursor to add it
-          manually.
+        <CardDescription className="text-xs text-white/60">
+          Verify detected entities below, or highlight any missed text with your cursor to add it manually.
         </CardDescription>
       </CardHeader>
 
@@ -169,13 +168,13 @@ export function ReviewPanel({
         <div
           ref={reviewBoxRef}
           onMouseUp={handleTextSelect}
-          className="select-text rounded-xl border border-white/15 bg-white/5 p-4 text-sm leading-relaxed text-white"
+          className="select-text rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm leading-relaxed text-white"
         >
           {renderHighlightedText()}
         </div>
 
         {manualSelection ? (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#b896ff]/40 bg-[#6441A5]/25 p-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[#8b6eff]/35 bg-[#7c5cff]/10 p-3">
             <span className="text-xs text-white">
               Add missed text: <strong>&quot;{manualSelection.text}&quot;</strong>
             </span>
@@ -185,10 +184,10 @@ export function ReviewPanel({
                 if (value) setManualType(value as EntityType);
               }}
             >
-              <SelectTrigger className="h-8 min-w-28 rounded-lg border-white/20 bg-black/60 text-xs text-white">
+              <SelectTrigger className="h-8 min-w-28 rounded-lg border-white/15 bg-[#161322] text-xs text-white">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-[#6441A5]/50 bg-[#140d24] text-white">
+              <SelectContent className="border-white/12 bg-[#161322] text-white">
                 {ENTITY_TYPES.map((t) => (
                   <SelectItem key={t} value={t} className="text-xs">
                     {t}
@@ -208,30 +207,32 @@ export function ReviewPanel({
                 );
                 setManualSelection(null);
               }}
-              className="cursor-pointer rounded-full bg-white px-3.5 text-xs font-bold uppercase text-black hover:bg-[#6441A5] hover:text-white"
+              className="h-8 cursor-pointer bg-white px-3 text-xs font-semibold text-zinc-950 hover:bg-white/90"
             >
-              + Mask Entity
+              + Mask entity
             </Button>
           </div>
         ) : null}
 
-        <div className="space-y-2">
-          <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-white/70">
-            Detected Findings ({activeFindings.length} active)
+        <div className="space-y-2.5">
+          <h3 className="text-xs font-medium text-white/65">
+            Detected findings ({activeFindings.length} active)
           </h3>
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {findings.map((f) => (
               <div
                 key={f.id}
-                className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-xs ${
+                className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs transition-colors duration-150 ${
                   f.status === "dismissed"
-                    ? "border-white/10 bg-white/5 opacity-45 line-through"
-                    : "border-white/15 bg-white/5"
+                    ? "border-white/[0.06] bg-white/[0.02] opacity-45 line-through"
+                    : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
                 }`}
               >
                 <div className="min-w-0 truncate">
-                  <span className="font-semibold text-white">{f.text}</span>
-                  <span className="ml-2 text-[11px] text-[#b896ff]">→ {f.placeholder}</span>
+                  <span className="font-medium text-white">{f.text}</span>
+                  <span className="ml-2 font-mono text-[11px] text-[#a78bfa]">
+                    → {f.placeholder}
+                  </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <Select
@@ -241,10 +242,10 @@ export function ReviewPanel({
                       if (value) onChangeType(f.id, value as EntityType);
                     }}
                   >
-                    <SelectTrigger className="h-7 min-w-24 rounded border-white/15 bg-black/60 px-2 text-[11px] text-white">
+                    <SelectTrigger className="h-7 min-w-24 rounded border-white/12 bg-white/[0.04] px-2 text-[11px] text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-[#6441A5]/50 bg-[#140d24] text-white">
+                    <SelectContent className="border-white/12 bg-[#161322] text-white">
                       {ENTITY_TYPES.map((t) => (
                         <SelectItem key={t} value={t} className="text-xs">
                           {t}
@@ -257,7 +258,7 @@ export function ReviewPanel({
                     variant="ghost"
                     size="xs"
                     onClick={() => onToggleDismiss(f.id)}
-                    className="cursor-pointer rounded bg-white/10 px-2 text-[11px] text-white hover:bg-red-500/30"
+                    className="cursor-pointer text-[11px] text-white/75 hover:bg-red-500/15 hover:text-red-200"
                   >
                     {f.status === "dismissed" ? "Restore" : "Dismiss"}
                   </Button>
@@ -267,11 +268,11 @@ export function ReviewPanel({
           </div>
         </div>
 
-        <div className="space-y-1.5 rounded-xl border border-white/10 bg-black/60 p-4">
-          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#b896ff]">
-            Masked Preview (What leaves the company):
+        <div className="space-y-1.5 rounded-lg border border-white/10 bg-black/40 p-3.5">
+          <span className="text-xs font-medium text-[#a78bfa]">
+            Masked preview (outgoing payload)
           </span>
-          <p className="font-mono text-xs leading-relaxed text-white/85">
+          <p className="font-mono text-xs leading-relaxed text-white/80">
             {buildMaskedText(reviewText, findings)}
           </p>
         </div>
@@ -281,9 +282,9 @@ export function ReviewPanel({
             type="button"
             disabled={sending}
             onClick={onApproveAndSend}
-            className="min-h-11 cursor-pointer rounded-full bg-white px-6 text-xs font-bold uppercase tracking-[0.16em] text-black shadow-[0_0_25px_rgba(155,114,235,0.7)] hover:bg-[#6441A5] hover:text-white"
+            className="h-10 cursor-pointer bg-white px-5 text-sm font-semibold text-zinc-950 hover:bg-white/90"
           >
-            {sending ? "Sending Masked Payload..." : "Approve & Send Masked Payload"}
+            {sending ? "Sending masked payload..." : "Approve & send masked"}
           </Button>
         </div>
       </CardContent>
