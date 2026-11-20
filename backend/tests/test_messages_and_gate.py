@@ -343,3 +343,91 @@ def test_clean_message_auto_policy_and_cross_user_isolation(gate_env) -> None:
     assert auto_sent.json()["status"] == "sent"
     assert "karim.benali@atlastech.dz" not in auto_sent.json()["user_message"]["masked_content"]
     assert "karim.benali@atlastech.dz" in auto_sent.json()["user_message"]["unmasked_content"]
+
+
+def test_message_ordering_history_windowing_and_pending_review_reload(gate_env) -> None:
+    from app.routers.sessions import window_masked_history
+
+    # Unit check: window_masked_history preserves opening contract turn + latest turns + role alternation.
+    long_history = [
+        ("user", "Contract 1 between [COMPANY_111111] and [PERSON_222222]."),
+        ("assistant", "Reviewed opening contract."),
+        ("user", "Turn 2 question"),
+        ("assistant", "Turn 2 answer"),
+        ("user", "Turn 3 question"),
+        ("assistant", "Turn 3 answer"),
+        ("user", "Turn 4 question"),
+        ("assistant", "Turn 4 answer"),
+    ]
+    windowed = window_masked_history(
+        long_history,
+        "Turn 5 newest question",
+        max_messages=5,
+        max_chars=500,
+    )
+    assert [role for role, _ in windowed] == ["user", "assistant", "user", "assistant", "user"]
+    assert windowed[0][1].startswith("Contract 1")
+    assert windowed[2][1] == "Turn 4 question"
+    assert windowed[-1][1] == "Turn 5 newest question"
+
+    # Character cap drops older turns gracefully and still starts with user.
+    tight = window_masked_history(
+        long_history,
+        "Short newest",
+        max_messages=10,
+        max_chars=60,
+    )
+    assert tight[0][0] == "user"
+    assert tight[-1] == ("user", "Short newest")
+    assert sum(len(text) for _, text in tight) <= 60
+
+    # API check: strict user -> assistant timestamp ordering and pending_review restoration on GET /sessions/{id}.
+    client, session_factory = gate_env
+    _login(client, "anis@acme.local", "anis-secret-123")
+    session_id = client.post("/sessions", json={"provider": "mock", "title": "Reload"}).json()["id"]
+
+    sent = client.post(
+        f"/sessions/{session_id}/messages",
+        json={"content": "summarize obligations in plain text."},
+    )
+    assert sent.status_code == 200
+    body = sent.json()
+    assert body["user_message"]["created_at"] < body["assistant_message"]["created_at"]
+
+    # Hold a manual review, then create a second one -> older review is superseded and GET returns only the latest.
+    first = client.post(
+        f"/sessions/{session_id}/messages",
+        json={"content": "Check Karim Benali clause 1.", "mode": "manual"},
+    )
+    assert first.status_code == 200
+    first_id = first.json()["review_id"]
+
+    second = client.post(
+        f"/sessions/{session_id}/messages",
+        json={"content": "Check Karim Benali clause 2.", "mode": "manual"},
+    )
+    assert second.status_code == 200
+    second_id = second.json()["review_id"]
+
+    detail = client.get(f"/sessions/{session_id}")
+    assert detail.status_code == 200
+    detail_body = detail.json()
+    assert [m["role"] for m in detail_body["masked_messages"]] == ["user", "assistant"]
+    assert detail_body["pending_review"] is not None
+    assert detail_body["pending_review"]["review_id"] == second_id
+    assert detail_body["pending_review"]["raw_text"] == "Check Karim Benali clause 2."
+    assert "Karim Benali" not in detail_body["pending_review"]["masked_preview"]
+
+    with session_factory() as db:
+        superseded = db.get(PendingReview, first_id)
+        assert superseded is not None
+        assert superseded.status == "superseded"
+        assert superseded.encrypted_payload == ""
+
+    # After approving, pending_review becomes None on reload.
+    approved = client.post(f"/sessions/{session_id}/reviews/{second_id}/approve")
+    assert approved.status_code == 200
+    after = client.get(f"/sessions/{session_id}").json()
+    assert after["pending_review"] is None
+    assert [m["role"] for m in after["masked_messages"]] == ["user", "assistant", "user", "assistant"]
+

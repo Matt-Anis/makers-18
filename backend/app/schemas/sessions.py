@@ -49,11 +49,38 @@ class GatewaySessionOut(BaseModel):
     ended_at: datetime | None = None
 
 
+class FindingOut(BaseModel):
+    """Detected sensitive span shown to the user before send."""
+
+    id: str
+    type: str
+    text: str
+    start: int
+    end: int
+    source: str
+    confidence: float
+    placeholder: str
+
+
+class PendingReviewOut(BaseModel):
+    """Active awaiting-approval review returned when reloading a session."""
+
+    review_id: str
+    provider: str
+    model: str
+    thinking_effort: str
+    raw_text: str
+    findings: list[FindingOut]
+    masked_preview: str
+    created_at: datetime
+
+
 class GatewaySessionDetailOut(GatewaySessionOut):
-    """Gateway session metadata plus masked message history and vault status."""
+    """Gateway session metadata plus masked message history, vault status, and active review."""
 
     vault_active: bool
     masked_messages: list[MaskedMessageOut]
+    pending_review: PendingReviewOut | None = None
 
 
 class AuditLogOut(BaseModel):
@@ -69,19 +96,6 @@ class AuditLogOut(BaseModel):
     approved: bool | None
     entity_counts: dict[str, int] | None
     created_at: datetime
-
-
-class FindingOut(BaseModel):
-    """Detected sensitive span shown to the user before send."""
-
-    id: str
-    type: str
-    text: str
-    start: int
-    end: int
-    source: str
-    confidence: float
-    placeholder: str
 
 
 class SendMessageRequest(BaseModel):
