@@ -21,13 +21,14 @@ class CreateGatewaySessionRequest(BaseModel):
 
 
 class MaskedMessageOut(BaseModel):
-    """Masked chat message returned for session recovery."""
+    """Chat message returned for session recovery (unmasked on the fly when vault exists)."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     role: str
     masked_content: str
+    unmasked_content: str
     created_at: datetime
 
 

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     vault_ttl_seconds: int = 2 * 3600
     vault_encryption_key: str = ""
+    ephemeral_vaults_only: bool = False
 
     seed_demo_users: bool = False
 

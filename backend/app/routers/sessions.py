@@ -7,13 +7,28 @@ from sqlalchemy.orm import Session, joinedload
 from app.auth.dependencies import ensure_utc, get_current_user
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.models import AuditLog, GatewaySession, GatewaySessionStatus, User, utcnow
+from app.models import (
+    AuditLog,
+    GatewaySession,
+    GatewaySessionStatus,
+    PendingReview,
+    User,
+    utcnow,
+)
 from app.schemas.sessions import (
     CreateGatewaySessionRequest,
     GatewaySessionDetailOut,
     GatewaySessionOut,
+    MaskedMessageOut,
 )
-from app.vault.store import VaultData, VaultStore, get_vault_store
+from app.vault.store import (
+    VaultData,
+    VaultStore,
+    delete_session_vault,
+    get_vault_store,
+    load_session_vault,
+    save_session_vault,
+)
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -47,7 +62,7 @@ def create_session(
     vault_store: VaultStore = Depends(get_vault_store),
     settings: Settings = Depends(get_settings),
 ) -> GatewaySession:
-    """Create a user-owned gateway session and initialize its encrypted ephemeral vault."""
+    """Create a user-owned gateway session and initialize its encrypted vault."""
     now = utcnow()
     gateway_session = GatewaySession(
         owner_user_id=current_user.id,
@@ -61,7 +76,14 @@ def create_session(
     db.add(gateway_session)
     db.flush()
 
-    vault_store.save(gateway_session.id, VaultData(), ttl_seconds=settings.vault_ttl_seconds)
+    save_session_vault(
+        db,
+        vault_store,
+        gateway_session.id,
+        VaultData(),
+        ttl_seconds=settings.vault_ttl_seconds,
+        ephemeral_only=settings.ephemeral_vaults_only,
+    )
 
     db.add(
         AuditLog(
@@ -80,6 +102,7 @@ def create_session(
 def list_sessions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> list[GatewaySession]:
     """List active gateway sessions owned by the current user."""
     now = utcnow()
@@ -93,7 +116,9 @@ def list_sessions(
             .order_by(GatewaySession.updated_at.desc())
         )
     )
-    return [item for item in sessions if ensure_utc(item.expires_at) > now]
+    if settings.ephemeral_vaults_only:
+        return [item for item in sessions if ensure_utc(item.expires_at) > now]
+    return sessions
 
 
 @router.get("/{session_id}", response_model=GatewaySessionDetailOut)
@@ -102,14 +127,32 @@ def get_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     vault_store: VaultStore = Depends(get_vault_store),
+    settings: Settings = Depends(get_settings),
 ) -> GatewaySessionDetailOut:
-    """Fetch a single gateway session owned by the current user along with masked history."""
+    """Fetch a single gateway session owned by the current user along with restored history."""
     gateway_session = _get_owned_session(
         db,
         session_id,
         current_user.id,
         with_messages=True,
     )
+    vault = load_session_vault(
+        db,
+        vault_store,
+        gateway_session.id,
+        ttl_seconds=settings.vault_ttl_seconds,
+        ephemeral_only=settings.ephemeral_vaults_only,
+    )
+    messages = [
+        MaskedMessageOut(
+            id=msg.id,
+            role=msg.role,
+            masked_content=msg.masked_content,
+            unmasked_content=vault.unmask_text(msg.masked_content) if vault else msg.masked_content,
+            created_at=msg.created_at,
+        )
+        for msg in gateway_session.masked_messages
+    ]
     return GatewaySessionDetailOut(
         id=gateway_session.id,
         owner_user_id=gateway_session.owner_user_id,
@@ -120,8 +163,8 @@ def get_session(
         updated_at=gateway_session.updated_at,
         expires_at=gateway_session.expires_at,
         ended_at=gateway_session.ended_at,
-        vault_active=vault_store.exists(gateway_session.id),
-        masked_messages=gateway_session.masked_messages,
+        vault_active=vault is not None,
+        masked_messages=messages,
     )
 
 
@@ -134,13 +177,21 @@ def delete_session(
 ) -> dict[str, str]:
     """End a gateway session, wipe its encrypted vault and masked messages, and log metadata."""
     gateway_session = _get_owned_session(db, session_id, current_user.id)
-    vault_store.delete(gateway_session.id)
+    delete_session_vault(db, vault_store, gateway_session.id)
 
     now = utcnow()
     gateway_session.status = GatewaySessionStatus.ENDED.value
     gateway_session.ended_at = now
     gateway_session.updated_at = now
     gateway_session.masked_messages.clear()
+
+    pending = list(
+        db.scalars(
+            select(PendingReview).where(PendingReview.gateway_session_id == gateway_session.id)
+        )
+    )
+    for review in pending:
+        db.delete(review)
 
     db.add(
         AuditLog(

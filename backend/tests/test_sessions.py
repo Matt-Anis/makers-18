@@ -1,5 +1,6 @@
 from collections.abc import Generator
 from pathlib import Path
+import re
 
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
@@ -142,14 +143,48 @@ def test_vault_encryption_and_unmask_round_trip() -> None:
     vault = VaultData()
     p1 = vault.assign_placeholder("PERSON", "Anis")
     p2 = vault.assign_placeholder("PERSON", "Anis Benali")
-    assert p1 == "[PERSON_1]"
-    assert p2 == "[PERSON_2]"
+    assert re.fullmatch(r"\[PERSON_[0-9a-f]{6}\]", p1)
+    assert re.fullmatch(r"\[PERSON_[0-9a-f]{6}\]", p2)
+    assert p1 != p2
     # Consistent placeholder across case/whitespace variants.
-    assert vault.assign_placeholder("PERSON", "  anis ") == "[PERSON_1]"
+    assert vault.assign_placeholder("PERSON", "  anis ") == p1
 
     ciphertext = cipher.encrypt(vault)
     assert b"Anis" not in ciphertext
     restored = cipher.decrypt(ciphertext)
 
-    masked = "Please confirm whether [PERSON_2] and [person_1] signed."
+    masked = f"Please confirm whether {p2} and {p1.lower()} signed."
     assert restored.unmask_text(masked) == "Please confirm whether Anis Benali and Anis signed."
+
+
+def test_persistent_vault_recovers_after_redis_cache_eviction(session_env) -> None:
+    client, vault_store, session_factory = session_env
+    _login(client, "anis@acme.local", "anis-secret-123")
+    session_id = client.post("/sessions", json={"provider": "mock", "title": "Long chat"}).json()["id"]
+
+    # Simulate populating the vault + saving persistent snapshot, then evicting Redis RAM cache.
+    from app.models import MaskedMessage
+    from app.vault.store import save_session_vault
+
+    vault = vault_store.load(session_id)
+    assert vault is not None
+    token = vault.assign_placeholder("PERSON", "Karim")
+    with session_factory() as db:
+        save_session_vault(db, vault_store, session_id, vault, ttl_seconds=60, ephemeral_only=False)
+        db.add(
+            MaskedMessage(
+                gateway_session_id=session_id,
+                role="user",
+                masked_content=f"Please review {token}'s NDA.",
+            )
+        )
+        db.commit()
+
+    vault_store.delete(session_id)
+    assert not vault_store.exists(session_id)
+
+    detail = client.get(f"/sessions/{session_id}")
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["vault_active"] is True
+    assert body["masked_messages"][0]["unmasked_content"] == "Please review Karim's NDA."
