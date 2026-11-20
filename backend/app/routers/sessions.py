@@ -37,6 +37,7 @@ from app.schemas.sessions import (
     GatewaySessionDetailOut,
     GatewaySessionOut,
     MaskedMessageOut,
+    PendingReviewOut,
     ReviewRejectResponse,
     SendMessageRequest,
     SendMessageResponse,
@@ -174,6 +175,32 @@ def get_session(
         )
         for msg in gateway_session.masked_messages
     ]
+    pending_review_out: PendingReviewOut | None = None
+    active_pending = db.scalar(
+        select(PendingReview)
+        .where(
+            PendingReview.gateway_session_id == gateway_session.id,
+            PendingReview.owner_user_id == current_user.id,
+            PendingReview.status == "pending",
+        )
+        .order_by(PendingReview.created_at.desc())
+    )
+    if active_pending is not None and active_pending.encrypted_payload:
+        try:
+            raw_text, pending_findings = _decode_pending_payload(active_pending)
+            pending_review_out = PendingReviewOut(
+                review_id=active_pending.id,
+                provider=active_pending.provider,
+                model=active_pending.model,
+                thinking_effort=active_pending.thinking_effort,
+                raw_text=raw_text,
+                findings=[_to_finding_out(item) for item in pending_findings],
+                masked_preview=apply_mask(raw_text, pending_findings),
+                created_at=active_pending.created_at,
+            )
+        except HTTPException:
+            pending_review_out = None
+
     return GatewaySessionDetailOut(
         id=gateway_session.id,
         owner_user_id=gateway_session.owner_user_id,
@@ -186,6 +213,7 @@ def get_session(
         ended_at=gateway_session.ended_at,
         vault_active=vault is not None,
         masked_messages=messages,
+        pending_review=pending_review_out,
     )
 
 
@@ -323,6 +351,66 @@ def _serialize_message(msg: MaskedMessage, vault: VaultData) -> MaskedMessageOut
     )
 
 
+def window_masked_history(
+    masked_messages: list[tuple[str, str]],
+    newest_user_text: str,
+    *,
+    max_messages: int,
+    max_chars: int,
+) -> list[tuple[str, str]]:
+    """
+    Build a bounded masked history ending with newest_user_text.
+    Preserves the opening (user, assistant) pair when budget allows, fills remaining budget
+    with the most recent turns, and guarantees user-first role alternation.
+    """
+    newest_turn = ("user", newest_user_text)
+    if max_messages <= 1 or max_chars <= len(newest_user_text) or not masked_messages:
+        return [newest_turn]
+
+    turns: list[list[tuple[str, str]]] = []
+    idx = 0
+    while idx < len(masked_messages):
+        role, content = masked_messages[idx]
+        if (
+            role == "user"
+            and idx + 1 < len(masked_messages)
+            and masked_messages[idx + 1][0] == "assistant"
+        ):
+            turns.append([(role, content), masked_messages[idx + 1]])
+            idx += 2
+        else:
+            idx += 1
+
+    if not turns:
+        return [newest_turn]
+
+    remaining_msgs = max_messages - 1
+    remaining_chars = max_chars - len(newest_user_text)
+
+    anchor: list[tuple[str, str]] = []
+    tail_candidates = turns
+    if len(turns) > 1:
+        first_turn = turns[0]
+        first_chars = sum(len(text) for _, text in first_turn)
+        if remaining_msgs >= len(first_turn) and remaining_chars >= first_chars:
+            anchor = first_turn
+            remaining_msgs -= len(first_turn)
+            remaining_chars -= first_chars
+            tail_candidates = turns[1:]
+
+    recent: list[tuple[str, str]] = []
+    for turn in reversed(tail_candidates):
+        turn_chars = sum(len(text) for _, text in turn)
+        if remaining_msgs >= len(turn) and remaining_chars >= turn_chars:
+            recent = turn + recent
+            remaining_msgs -= len(turn)
+            remaining_chars -= turn_chars
+        else:
+            break
+
+    return anchor + recent + [newest_turn]
+
+
 def _dispatch_and_persist(
     db: Session,
     vault_store: VaultStore,
@@ -343,9 +431,12 @@ def _dispatch_and_persist(
     commit_findings_to_vault(vault, findings)
     masked_user_text = apply_mask(raw_text, findings)
 
-    history = [
-        (msg.role, msg.masked_content) for msg in gateway_session.masked_messages
-    ] + [("user", masked_user_text)]
+    history = window_masked_history(
+        [(msg.role, msg.masked_content) for msg in gateway_session.masked_messages],
+        masked_user_text,
+        max_messages=settings.history_max_messages,
+        max_chars=settings.history_max_chars,
+    )
 
     try:
         masked_reply = send_masked_chat(
@@ -369,6 +460,7 @@ def _dispatch_and_persist(
     )
 
     now = utcnow()
+    assistant_time = now + timedelta(milliseconds=1)
     user_msg = MaskedMessage(
         gateway_session_id=gateway_session.id,
         role="user",
@@ -379,13 +471,13 @@ def _dispatch_and_persist(
         gateway_session_id=gateway_session.id,
         role="assistant",
         masked_content=masked_reply,
-        created_at=now,
+        created_at=assistant_time,
     )
     db.add(user_msg)
     db.add(assistant_msg)
 
-    gateway_session.updated_at = now
-    gateway_session.expires_at = now + timedelta(seconds=settings.vault_ttl_seconds)
+    gateway_session.updated_at = assistant_time
+    gateway_session.expires_at = assistant_time + timedelta(seconds=settings.vault_ttl_seconds)
 
     entity_counts = dict(Counter(item.type for item in findings))
     db.add(
@@ -489,6 +581,21 @@ def send_session_message(
     )
 
     if effective_mode == "manual" and findings:
+        stale_pending = list(
+            db.scalars(
+                select(PendingReview).where(
+                    PendingReview.gateway_session_id == gateway_session.id,
+                    PendingReview.owner_user_id == current_user.id,
+                    PendingReview.status == "pending",
+                )
+            )
+        )
+        superseded_at = utcnow()
+        for stale in stale_pending:
+            stale.status = "superseded"
+            stale.resolved_at = superseded_at
+            stale.encrypted_payload = ""
+
         masked_preview = apply_mask(payload.content, findings)
         raw_envelope = json.dumps(
             {

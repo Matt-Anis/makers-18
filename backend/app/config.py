@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     vault_encryption_key: str = ""
     ephemeral_vaults_only: bool = False
 
+    history_max_messages: int = 24
+    history_max_chars: int = 48_000
+
     seed_demo_users: bool = False
 
 

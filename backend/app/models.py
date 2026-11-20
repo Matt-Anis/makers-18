@@ -104,7 +104,7 @@ class GatewaySession(Base):
     masked_messages: Mapped[list["MaskedMessage"]] = relationship(
         back_populates="gateway_session",
         cascade="all, delete-orphan",
-        order_by="MaskedMessage.created_at.asc()",
+        order_by=lambda: (MaskedMessage.created_at.asc(), MaskedMessage.id.asc()),
     )
 
 
