@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -21,13 +22,14 @@ class CreateGatewaySessionRequest(BaseModel):
 
 
 class MaskedMessageOut(BaseModel):
-    """Masked chat message returned for session recovery."""
+    """Chat message returned for session recovery (unmasked on the fly when vault exists)."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     role: str
     masked_content: str
+    unmasked_content: str
     created_at: datetime
 
 
@@ -67,3 +69,55 @@ class AuditLogOut(BaseModel):
     approved: bool | None
     entity_counts: dict[str, int] | None
     created_at: datetime
+
+
+class FindingOut(BaseModel):
+    """Detected sensitive span shown to the user before send."""
+
+    id: str
+    type: str
+    text: str
+    start: int
+    end: int
+    source: str
+    confidence: float
+    placeholder: str
+
+
+class SendMessageRequest(BaseModel):
+    """Payload to filter and optionally hold or dispatch a user message."""
+
+    content: str = Field(min_length=1, max_length=50000)
+    provider: str | None = Field(default=None, max_length=64)
+    model: str | None = Field(default=None, max_length=128)
+    thinking_effort: Literal["low", "medium", "high"] | None = None
+    mode: Literal["manual", "auto"] | None = None
+
+    @field_validator("content")
+    @classmethod
+    def validate_non_blank_content(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Message content must not be blank")
+        return value
+
+
+class SendMessageResponse(BaseModel):
+    """Response for both held ('needs_review') and dispatched ('sent') turns."""
+
+    status: Literal["needs_review", "sent"]
+    review_id: str | None = None
+    provider: str
+    model: str
+    thinking_effort: str
+    findings: list[FindingOut] = Field(default_factory=list)
+    masked_preview: str | None = None
+    user_message: MaskedMessageOut | None = None
+    assistant_message: MaskedMessageOut | None = None
+
+
+class ReviewRejectResponse(BaseModel):
+    """Response returned when a pending review is denied by the user."""
+
+    status: Literal["rejected"]
+    review_id: str
+

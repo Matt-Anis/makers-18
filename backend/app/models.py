@@ -127,6 +127,47 @@ class MaskedMessage(Base):
     gateway_session: Mapped[GatewaySession] = relationship(back_populates="masked_messages")
 
 
+class SessionVaultSnapshot(Base):
+    """Encrypted vault backup in SQLite so multi-week sessions survive Redis TTL."""
+
+    __tablename__ = "session_vault_snapshots"
+
+    gateway_session_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("gateway_sessions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    encrypted_blob: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class PendingReview(Base):
+    """Awaiting Accept/Reject human review; payload is Fernet-encrypted at rest."""
+
+    __tablename__ = "pending_reviews"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    gateway_session_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("gateway_sessions.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    owner_user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    thinking_effort: Mapped[str] = mapped_column(String(16), nullable=False, default="medium")
+    encrypted_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class AuditLog(Base):
     """Metadata-only audit record; never stores raw text, prompts, or vault mappings."""
 
