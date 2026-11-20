@@ -242,3 +242,23 @@ class CustomRule(Base):
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class EvaluationRun(Base):
+    """Persisted aggregate detection benchmark & ablation snapshot (no raw user PII)."""
+
+    __tablename__ = "evaluation_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    triggered_by_user_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    include_gpu_slm: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    presidio_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    gpu_slm_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    duration_ms: Mapped[int] = mapped_column(nullable=False, default=0)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False, default=utcnow)

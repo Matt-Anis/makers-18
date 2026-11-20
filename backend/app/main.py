@@ -7,6 +7,7 @@ from app.db import Base, SessionLocal, engine, ensure_schema_migrations
 from app.routers.audit import router as audit_router
 from app.routers.auth import router as auth_router
 from app.routers.ingestion import router as ingestion_router
+from app.routers.metrics import router as metrics_router
 from app.routers.providers import router as providers_router
 from app.routers.rules import router as rules_router
 from app.routers.sessions import router as sessions_router
@@ -36,6 +37,7 @@ app = FastAPI(title="Contract Privacy Gateway", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(sessions_router)
 app.include_router(ingestion_router)
+app.include_router(metrics_router)
 app.include_router(audit_router)
 app.include_router(settings_router)
 app.include_router(providers_router)
