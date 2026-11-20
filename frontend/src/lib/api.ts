@@ -24,12 +24,41 @@ export interface MaskedMessage {
   id: string;
   role: string;
   masked_content: string;
+  unmasked_content: string;
   created_at: string;
 }
 
 export interface GatewaySessionDetail extends GatewaySession {
   vault_active: boolean;
   masked_messages: MaskedMessage[];
+}
+
+export interface FindingOut {
+  id: string;
+  type: string;
+  text: string;
+  start: number;
+  end: number;
+  source: string;
+  confidence: number;
+  placeholder: string;
+}
+
+export interface SendMessageResponse {
+  status: "needs_review" | "sent";
+  review_id: string | null;
+  provider: string;
+  model: string;
+  thinking_effort: "low" | "medium" | "high";
+  findings: FindingOut[];
+  masked_preview: string | null;
+  user_message: MaskedMessage | null;
+  assistant_message: MaskedMessage | null;
+}
+
+export interface ReviewRejectResponse {
+  status: "rejected";
+  review_id: string;
 }
 
 export interface AuditLogEntry {
