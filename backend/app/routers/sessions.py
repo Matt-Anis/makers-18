@@ -16,6 +16,7 @@ from app.detection.pipeline import (
     commit_findings_to_vault,
     detect_sensitive_entities,
 )
+from app.detection.presidio_detector import get_presidio_detector
 from app.detection.slm_client import OpenAICompatibleSLMDetector
 from app.models import (
     AuditLog,
@@ -565,6 +566,13 @@ def send_session_message(
         )
     )
     extra_detectors = []
+    if settings.presidio_enabled:
+        presidio = get_presidio_detector(
+            model_name=settings.presidio_model,
+            min_score=settings.presidio_min_score,
+        )
+        if presidio is not None:
+            extra_detectors.append(presidio)
     if settings_row.gpu_llm_enabled and settings_row.gpu_llm_endpoint:
         extra_detectors.append(
             OpenAICompatibleSLMDetector(

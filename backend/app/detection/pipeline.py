@@ -171,17 +171,75 @@ def _detect_custom_rules(
     return spans
 
 
-def _detect_builtin(text: str) -> list[tuple[int, int, str, str, float, str | None]]:
+# Leading words or months that must not trigger the fallback 2-word capitalized PERSON regex.
+PERSON_WORD_STOPWORDS = frozenset(
+    {
+        "on",
+        "in",
+        "at",
+        "by",
+        "to",
+        "of",
+        "for",
+        "from",
+        "with",
+        "the",
+        "this",
+        "that",
+        "these",
+        "those",
+        "section",
+        "clause",
+        "article",
+        "schedule",
+        "annex",
+        "exhibit",
+        "agreement",
+        "contract",
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+    }
+)
+
+
+def _detect_builtin(
+    text: str,
+    *,
+    include_regex_person: bool = True,
+) -> list[tuple[int, int, str, str, float, str | None]]:
     spans: list[tuple[int, int, str, str, float, str | None]] = []
     for entity_type, compiled, source, confidence in BUILTIN_RULES:
+        if entity_type == "PERSON" and not include_regex_person:
+            continue
         for match in compiled.finditer(text):
             matched_text = match.group(0).strip(" ,.;:")
             if not matched_text:
                 continue
             start = match.start()
             end = start + len(matched_text)
-            if entity_type == "PERSON" and matched_text.lower() in PERSON_STOPWORDS:
-                continue
+            if entity_type == "PERSON":
+                lowered = matched_text.lower()
+                if lowered in PERSON_STOPWORDS or any(
+                    word in PERSON_WORD_STOPWORDS for word in lowered.split()
+                ):
+                    continue
             if entity_type == "PHONE":
                 digits = sum(ch.isdigit() for ch in matched_text)
                 if digits < 8:
@@ -227,10 +285,12 @@ def detect_sensitive_entities(
     if not text:
         return []
 
+    has_ml_ner = any(getattr(detector, "is_ml_ner", False) for detector in (extra_detectors or []))
+
     raw_spans: list[tuple[int, int, str, str, float, str | None]] = []
     raw_spans.extend(_detect_from_vault(text, vault))
     raw_spans.extend(_detect_custom_rules(text, custom_rules))
-    raw_spans.extend(_detect_builtin(text))
+    raw_spans.extend(_detect_builtin(text, include_regex_person=not has_ml_ner))
 
     if extra_detectors:
         for detector in extra_detectors:

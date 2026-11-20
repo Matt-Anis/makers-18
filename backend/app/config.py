@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     history_max_messages: int = 24
     history_max_chars: int = 48_000
 
+    presidio_enabled: bool = True
+    presidio_model: str = "en_core_web_lg"
+    presidio_min_score: float = 0.45
+
     seed_demo_users: bool = False
 
 
