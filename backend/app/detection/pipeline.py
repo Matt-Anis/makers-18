@@ -271,39 +271,12 @@ def _merge_spans(
     return accepted
 
 
-def detect_sensitive_entities(
+def _build_findings(
     text: str,
-    *,
+    merged: list[tuple[int, int, str, str, float, str | None]],
     vault: VaultData,
-    custom_rules: list[CustomRule],
-    extra_detectors: list[ExtraDetector] | None = None,
 ) -> list[DetectedFinding]:
-    """
-    Run Pass 0 (Vault Lookup) + Layer 1 (Custom Rules + Regex/NER) + pluggable extra detectors,
-    returning non-overlapping offset-aligned findings with consistent [TYPE_<6-hex>] tokens.
-    """
-    if not text:
-        return []
-
-    has_ml_ner = any(getattr(detector, "is_ml_ner", False) for detector in (extra_detectors or []))
-
-    raw_spans: list[tuple[int, int, str, str, float, str | None]] = []
-    raw_spans.extend(_detect_from_vault(text, vault))
-    raw_spans.extend(_detect_custom_rules(text, custom_rules))
-    raw_spans.extend(_detect_builtin(text, include_regex_person=not has_ml_ner))
-
-    if extra_detectors:
-        for detector in extra_detectors:
-            for start, end, entity_type, source, confidence in detector.detect(text):
-                if 0 <= start < end <= len(text):
-                    norm_type = entity_type.upper()
-                    if norm_type not in VALID_ENTITY_TYPES:
-                        norm_type = "CUSTOM"
-                    raw_spans.append((start, end, norm_type, source, confidence, None))
-
-    merged = _merge_spans(raw_spans)
-
-    # Allocate placeholders against a working copy so caller controls when Vault mutates.
+    """Allocate placeholders against a working copy so caller controls when Vault mutates."""
     working_to_placeholder = dict(vault.to_placeholder)
     working_to_real = dict(vault.to_real)
 
@@ -336,8 +309,70 @@ def detect_sensitive_entities(
                 placeholder=placeholder,
             )
         )
-
     return findings
+
+
+def detect_sensitive_entities(
+    text: str,
+    *,
+    vault: VaultData,
+    custom_rules: list[CustomRule],
+    extra_detectors: list[ExtraDetector] | None = None,
+) -> list[DetectedFinding]:
+    """
+    Run Pass 0 (Vault Lookup) + Layer 1 (Custom Rules + Regex/NER), pre-mask those spans,
+    then run post-mask detectors (Layer 2/3 GPU SLM) only on the pre-masked text while
+    mapping verbatim leftovers back to original text offsets.
+    """
+    if not text:
+        return []
+
+    detectors = list(extra_detectors or [])
+    pre_mask_detectors = [d for d in detectors if not getattr(d, "is_post_mask", False)]
+    post_mask_detectors = [d for d in detectors if getattr(d, "is_post_mask", False)]
+    has_ml_ner = any(getattr(detector, "is_ml_ner", False) for detector in pre_mask_detectors)
+
+    raw_spans: list[tuple[int, int, str, str, float, str | None]] = []
+    raw_spans.extend(_detect_from_vault(text, vault))
+    raw_spans.extend(_detect_custom_rules(text, custom_rules))
+    raw_spans.extend(_detect_builtin(text, include_regex_person=not has_ml_ner))
+
+    for detector in pre_mask_detectors:
+        for start, end, entity_type, source, confidence in detector.detect(text):
+            if 0 <= start < end <= len(text):
+                norm_type = entity_type.upper()
+                if norm_type not in VALID_ENTITY_TYPES:
+                    norm_type = "CUSTOM"
+                raw_spans.append((start, end, norm_type, source, confidence, None))
+
+    layer1_merged = _merge_spans(raw_spans)
+    layer1_findings = _build_findings(text, layer1_merged, vault)
+
+    if not post_mask_detectors:
+        return layer1_findings
+
+    premasked_text = apply_mask(text, layer1_findings)
+    # Lock provisional Layer 0/1 placeholders so post-mask leftovers keep identical tokens.
+    locked_spans: list[tuple[int, int, str, str, float, str | None]] = [
+        (f.start, f.end, f.type, f.source, f.confidence, f.placeholder)
+        for f in layer1_findings
+    ]
+    for detector in post_mask_detectors:
+        detect_post_mask = getattr(detector, "detect_post_mask", None)
+        post_spans = (
+            detect_post_mask(premasked_text, text)
+            if callable(detect_post_mask)
+            else detector.detect(premasked_text)
+        )
+        for start, end, entity_type, source, confidence in post_spans:
+            if 0 <= start < end <= len(text):
+                norm_type = entity_type.upper()
+                if norm_type not in VALID_ENTITY_TYPES:
+                    norm_type = "CUSTOM"
+                locked_spans.append((start, end, norm_type, source, confidence, None))
+
+    final_merged = _merge_spans(locked_spans)
+    return _build_findings(text, final_merged, vault)
 
 
 def apply_mask(text: str, findings: list[DetectedFinding]) -> str:
