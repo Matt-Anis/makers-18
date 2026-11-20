@@ -574,7 +574,7 @@ export default function OwnerSettingsPage() {
               <CardContent className="space-y-6">
                 <form
                   onSubmit={handleAddRule}
-                  className="grid gap-4 sm:grid-cols-[1fr_180px_auto_auto] sm:items-end"
+                  className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-[1fr_180px_auto_auto] lg:items-end"
                 >
                   <div className="space-y-1.5">
                     <Label htmlFor="rule-pattern" className="text-xs font-medium text-white/75">
@@ -695,7 +695,7 @@ export default function OwnerSettingsPage() {
               <CardContent className="space-y-4">
                 <form
                   onSubmit={handleCreateUser}
-                  className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_130px_auto] sm:items-end"
+                  className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_130px_auto] lg:items-end"
                 >
                   <div className="space-y-1">
                     <Label htmlFor="new-user-name" className="text-xs text-white/75">

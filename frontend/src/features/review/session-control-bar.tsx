@@ -59,9 +59,9 @@ export function SessionControlBar({
 
   return (
     <Card className="nyxora-surface rounded-3xl border ring-0">
-      <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3.5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
+      <CardContent className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
             <Label htmlFor="model-select" className="text-xs font-medium text-white/60">
               Model
             </Label>
@@ -73,7 +73,7 @@ export function SessionControlBar({
             >
               <SelectTrigger
                 id="model-select"
-                className="h-9 min-w-52 rounded-full px-3.5 text-xs text-white sm:text-sm"
+                className="h-9 w-full rounded-full px-3.5 text-xs text-white sm:w-auto sm:min-w-48 sm:text-sm"
               >
                 <SelectValue placeholder="No models enabled" />
               </SelectTrigger>
@@ -91,7 +91,7 @@ export function SessionControlBar({
           </div>
 
           {currentModel?.supports_thinking ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
               <Label htmlFor="thinking-select" className="text-xs font-medium text-white/60">
                 Thinking
               </Label>
@@ -103,7 +103,7 @@ export function SessionControlBar({
               >
                 <SelectTrigger
                   id="thinking-select"
-                  className="h-9 min-w-28 rounded-full px-3 text-xs capitalize text-white"
+                  className="h-9 w-full rounded-full px-3 text-xs capitalize text-white sm:w-auto sm:min-w-28"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -118,7 +118,7 @@ export function SessionControlBar({
             </div>
           ) : null}
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
             <Label htmlFor="mode-select" className="text-xs font-medium text-white/60">
               Mode
             </Label>
@@ -131,7 +131,7 @@ export function SessionControlBar({
             >
               <SelectTrigger
                 id="mode-select"
-                className="h-9 min-w-36 rounded-full px-3 text-xs text-white"
+                className="h-9 w-full rounded-full px-3 text-xs text-white sm:w-auto sm:min-w-36"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -148,62 +148,64 @@ export function SessionControlBar({
             </Select>
           </div>
 
-          {sessions.length > 0 ? (
-            <div className="flex items-center gap-2">
-              <Label htmlFor="session-select" className="text-xs font-medium text-white/60">
-                Session
-              </Label>
-              <Select
-                value={activeSession?.id ?? ""}
-                onValueChange={(value) => {
-                  if (value) onSelectSession(value);
-                }}
-              >
-                <SelectTrigger
-                  id="session-select"
-                  className="h-9 min-w-44 rounded-full px-3.5 font-mono text-xs text-white/85"
+          <div className="flex flex-wrap items-center gap-2">
+            {sessions.length > 0 ? (
+              <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-initial">
+                <Label htmlFor="session-select" className="shrink-0 text-xs font-medium text-white/60">
+                  Session
+                </Label>
+                <Select
+                  value={activeSession?.id ?? ""}
+                  onValueChange={(value) => {
+                    if (value) onSelectSession(value);
+                  }}
                 >
-                  <SelectValue placeholder="Select session" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sessions.map((item) => (
-                    <SelectItem key={item.id} value={item.id} className="rounded-xl font-mono text-xs">
-                      {item.title} ({item.id.slice(0, 8)})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <Badge
-              variant="outline"
-              className="rounded-full border-white/12 bg-white/[0.04] px-3 py-1 font-mono text-[11px] text-white/65"
-            >
-              Starts on scan
-            </Badge>
-          )}
+                  <SelectTrigger
+                    id="session-select"
+                    className="h-9 w-full rounded-full px-3.5 font-mono text-xs text-white/85 sm:w-auto sm:min-w-44"
+                  >
+                    <SelectValue placeholder="Select session" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sessions.map((item) => (
+                      <SelectItem key={item.id} value={item.id} className="rounded-xl font-mono text-xs">
+                        {item.title} ({item.id.slice(0, 8)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <Badge
+                variant="outline"
+                className="rounded-full border-white/12 bg-white/[0.04] px-3 py-1 font-mono text-[11px] text-white/65"
+              >
+                Starts on scan
+              </Badge>
+            )}
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={busy}
-            onClick={onNewSession}
-            className="h-9 cursor-pointer px-3"
-          >
-            <Plus className="size-3.5" aria-hidden="true" />
-            <span>New</span>
-          </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={onNewSession}
+              className="h-9 cursor-pointer px-3.5"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              <span>New</span>
+            </Button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 pt-1 lg:pt-0">
           <Button
             type="button"
             variant={showMasked ? "default" : "outline"}
             size="sm"
             aria-pressed={showMasked}
             onClick={onToggleShowMasked}
-            className="h-9 cursor-pointer px-3"
+            className="h-9 cursor-pointer px-3.5"
           >
             {showMasked ? (
               <EyeOff className="size-3.5" aria-hidden="true" />
@@ -220,7 +222,7 @@ export function SessionControlBar({
               size="sm"
               disabled={busy}
               onClick={onEndSession}
-              className="h-9 cursor-pointer px-3"
+              className="h-9 cursor-pointer px-3.5"
             >
               <Trash2 className="size-3.5" aria-hidden="true" />
               <span>End &amp; wipe vault</span>
