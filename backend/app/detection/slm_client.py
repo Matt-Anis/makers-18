@@ -134,7 +134,7 @@ class OpenAICompatibleSLMDetector:
 
     def _system_prompt(self) -> str:
         if self._rulebook_prompt:
-            return f"{SLM_SYSTEM_PROMPT}\nRulebook: {self._rulebook_prompt[:600]}"
+            return f"{SLM_SYSTEM_PROMPT}\nRulebook: {self._rulebook_prompt[:2500]}"
         return SLM_SYSTEM_PROMPT
 
     async def _call_chunk(

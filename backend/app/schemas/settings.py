@@ -181,3 +181,13 @@ class CustomRuleOut(BaseModel):
     is_regex: bool
     enabled: bool
     created_at: datetime
+
+
+class MarkdownRulesImportOut(BaseModel):
+    """Result of importing custom rules and/or SLM rulebook from a Markdown file."""
+
+    filename: str
+    created_rules: list[CustomRuleOut]
+    skipped_existing_count: int
+    rulebook_updated: bool
+    rulebook_prompt: str

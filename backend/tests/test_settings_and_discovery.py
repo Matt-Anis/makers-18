@@ -228,3 +228,52 @@ def test_owner_workspace_settings_and_rules_crud(api_env) -> None:
 
     deleted = client.delete(f"/rules/{rule_id}")
     assert deleted.status_code == 200
+
+    # Import a single Markdown policy file containing both SLM instructions and Layer 1 custom rules.
+    md_doc = (
+        "# Acme Privacy Policy\n\n"
+        "## Privacy Rulebook\n"
+        "- Flag all M&A target codenames and internal valuations.\n\n"
+        "## Custom Rules\n"
+        "- PROJECT-TITAN | CUSTOM\n"
+        "- `\\bDZ-\\d{4}\\b` | ID | regex\n"
+    ).encode("utf-8")
+
+    imported = client.post(
+        "/rules/import-markdown",
+        files={"file": ("policy.md", md_doc, "text/markdown")},
+    )
+    assert imported.status_code == 200
+    imp_body = imported.json()
+    assert len(imp_body["created_rules"]) == 2
+    assert imp_body["skipped_existing_count"] == 0
+    assert imp_body["rulebook_updated"] is True
+    assert "M&A target codenames" in imp_body["rulebook_prompt"]
+    assert "PROJECT-TITAN" not in imp_body["rulebook_prompt"]
+    patterns = {(r["pattern"], r["entity_type"], r["is_regex"]) for r in imp_body["created_rules"]}
+    assert patterns == {("PROJECT-TITAN", "CUSTOM", False), (r"\bDZ-\d{4}\b", "ID", True)}
+
+    # Re-importing the exact same Markdown file deduplicates cleanly.
+    reimported = client.post(
+        "/rules/import-markdown",
+        files={"file": ("policy.md", md_doc, "text/markdown")},
+    )
+    assert reimported.status_code == 200
+    assert len(reimported.json()["created_rules"]) == 0
+    assert reimported.json()["skipped_existing_count"] == 2
+
+    # Invalid regex inside Markdown fails with 422.
+    bad_md = b"## Custom Rules\n- `[unclosed(` | CUSTOM | regex\n"
+    bad_res = client.post(
+        "/rules/import-markdown",
+        files={"file": ("broken.md", bad_md, "text/markdown")},
+    )
+    assert bad_res.status_code == 422
+
+    # Regular users cannot import Markdown rules.
+    _login(client, "user@acme.local", "user-secret-123")
+    denied = client.post(
+        "/rules/import-markdown",
+        files={"file": ("policy.md", md_doc, "text/markdown")},
+    )
+    assert denied.status_code == 403
