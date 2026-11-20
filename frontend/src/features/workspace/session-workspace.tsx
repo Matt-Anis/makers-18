@@ -1,30 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { DashboardShell } from "@/components/nyxora/dashboard-shell";
 import { ContractInputCard } from "@/features/review/contract-input-card";
 import { ConversationThread } from "@/features/review/conversation-thread";
-import {
-  buildMaskedText,
-  recomputePlaceholders,
-  runMockDetection,
-  simulateMaskedProvider,
-} from "@/features/review/mock-pipeline";
 import { ReviewPanel } from "@/features/review/review-panel";
 import { modelOptionKey, SessionControlBar } from "@/features/review/session-control-bar";
 import {
   ChatMessage,
+  ENTITY_TYPES,
   EntityType,
   Finding,
-  SAMPLE_CONTRACT,
+  FindingSource,
 } from "@/features/review/types";
 import {
   ApiError,
   apiFetch,
   DiscoveredModel,
+  FindingOut,
   GatewaySession,
+  GatewaySessionDetail,
+  MaskedMessage,
   ModelDiscoveryResponse,
+  ReviewRejectResponse,
+  SendMessageResponse,
 } from "@/lib/api";
 
 const FALLBACK_MODEL: DiscoveredModel = {
@@ -35,6 +35,31 @@ const FALLBACK_MODEL: DiscoveredModel = {
   supports_thinking: true,
   thinking_efforts: ["low", "medium", "high"],
 };
+
+function toChatMessage(msg: MaskedMessage): ChatMessage {
+  return {
+    id: msg.id,
+    role: msg.role === "assistant" ? "assistant" : "user",
+    unmaskedText: msg.unmasked_content,
+    maskedText: msg.masked_content,
+  };
+}
+
+function toFinding(item: FindingOut): Finding {
+  const normalizedType = ENTITY_TYPES.includes(item.type as EntityType)
+    ? (item.type as EntityType)
+    : "CUSTOM";
+  return {
+    id: item.id,
+    type: normalizedType,
+    text: item.text,
+    start: item.start,
+    end: item.end,
+    source: item.source as FindingSource,
+    confidence: item.confidence,
+    placeholder: item.placeholder,
+  };
+}
 
 export function SessionWorkspace() {
   const { user } = useAuth();
@@ -57,10 +82,13 @@ export function SessionWorkspace() {
   const [step, setStep] = useState<
     "idle" | "detecting" | "clean" | "needs_review" | "sending"
   >("idle");
+  const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
   const [reviewText, setReviewText] = useState("");
+  const [maskedPreview, setMaskedPreview] = useState("");
   const [findings, setFindings] = useState<Finding[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showMasked, setShowMasked] = useState(false);
+  const skipNextLoadRef = useRef<string | null>(null);
 
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === activeSessionId) ?? null,
@@ -114,6 +142,40 @@ export function SessionWorkspace() {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user || !activeSessionId) {
+      return;
+    }
+    if (skipNextLoadRef.current === activeSessionId) {
+      skipNextLoadRef.current = null;
+      return;
+    }
+    let active = true;
+    apiFetch<GatewaySessionDetail>(`/sessions/${activeSessionId}`)
+      .then((detail) => {
+        if (!active) return;
+        setMessages(detail.masked_messages.map(toChatMessage));
+        if (!detail.vault_active) {
+          setStatusMessage(
+            "This session's vault has expired or been wiped; historical messages cannot be unmasked.",
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setStatusMessage("Could not load session history.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, activeSessionId]);
+
+  const clearPendingReview = useCallback(() => {
+    setPendingReviewId(null);
+    setReviewText("");
+    setMaskedPreview("");
+    setFindings([]);
+  }, []);
+
   const ensureActiveSession = useCallback(async (): Promise<GatewaySession | null> => {
     if (activeSession) return activeSession;
     try {
@@ -124,6 +186,7 @@ export function SessionWorkspace() {
           provider: selectedModel.provider,
         }),
       });
+      skipNextLoadRef.current = created.id;
       await refreshSessions();
       setActiveSessionId(created.id);
       return created;
@@ -147,8 +210,7 @@ export function SessionWorkspace() {
       await refreshSessions();
       setActiveSessionId(created.id);
       setMessages([]);
-      setFindings([]);
-      setReviewText("");
+      clearPendingReview();
       setStep("idle");
       setStatusMessage(`Started session "${created.title}" with an isolated encrypted vault.`);
     } catch (error) {
@@ -167,12 +229,11 @@ export function SessionWorkspace() {
         method: "DELETE",
       });
       setMessages([]);
-      setFindings([]);
-      setReviewText("");
+      clearPendingReview();
       setInputText("");
       setFileName(null);
       setStep("idle");
-      setStatusMessage("Session ended and its encrypted vault was wiped from memory.");
+      setStatusMessage("Session ended and its encrypted vault was wiped from storage.");
       await refreshSessions();
     } catch (error) {
       setStatusMessage(error instanceof ApiError ? error.message : "Could not end session.");
@@ -181,38 +242,10 @@ export function SessionWorkspace() {
     }
   }
 
-  function dispatchToProvider(unmasked: string, masked: string) {
-    setStep("sending");
-    setTimeout(() => {
-      const { assistantUnmasked, assistantMasked } = simulateMaskedProvider(
-        selectedModel.display_name,
-        unmasked,
-        masked,
-      );
-      const userMsg: ChatMessage = {
-        id: `u_${Date.now()}`,
-        role: "user",
-        unmaskedText: unmasked,
-        maskedText: masked,
-      };
-      const botMsg: ChatMessage = {
-        id: `a_${Date.now() + 1}`,
-        role: "assistant",
-        unmaskedText: assistantUnmasked,
-        maskedText: assistantMasked,
-      };
-      setMessages((prev) => [...prev, userMsg, botMsg]);
-      setInputText("");
-      setFileName(null);
-      setReviewText("");
-      setFindings([]);
-      setStep("idle");
-    }, 350);
-  }
-
   async function handleScan() {
     if (!inputText.trim()) return;
     setStatusMessage(null);
+    clearPendingReview();
     setStep("detecting");
 
     const session = await ensureActiveSession();
@@ -221,68 +254,90 @@ export function SessionWorkspace() {
       return;
     }
 
-    const text = inputText;
-    setReviewText(text);
-    const detected = runMockDetection(text);
+    const prompt = inputText;
+    try {
+      const response = await apiFetch<SendMessageResponse>(`/sessions/${session.id}/messages`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: prompt,
+          provider: selectedModel.provider,
+          model: selectedModel.model_id,
+          thinking_effort: thinkingEffort,
+          mode: allowAutoReview ? reviewMode : "manual",
+        }),
+      });
 
-    if (detected.length === 0) {
-      setFindings([]);
-      setStep("clean");
-      dispatchToProvider(text, text);
-    } else if (reviewMode === "auto" && allowAutoReview) {
-      const masked = buildMaskedText(text, detected);
-      dispatchToProvider(text, masked);
-    } else {
-      setFindings(detected);
+      if (response.status === "needs_review") {
+        setPendingReviewId(response.review_id);
+        setReviewText(prompt);
+        setMaskedPreview(response.masked_preview ?? "");
+        setFindings(response.findings.map(toFinding));
+        setStep("needs_review");
+        return;
+      }
+
+      const appended: ChatMessage[] = [];
+      if (response.user_message) appended.push(toChatMessage(response.user_message));
+      if (response.assistant_message) appended.push(toChatMessage(response.assistant_message));
+      setMessages((prev) => [...prev, ...appended]);
+      setInputText("");
+      setFileName(null);
+      setStep(response.findings.length === 0 ? "clean" : "idle");
+      await refreshSessions();
+    } catch (error) {
+      setStatusMessage(
+        error instanceof ApiError ? error.message : "Failed to process message.",
+      );
+      setStep("idle");
+    }
+  }
+
+  async function handleApproveAndSend() {
+    if (!activeSession || !pendingReviewId) return;
+    setStatusMessage(null);
+    setStep("sending");
+    try {
+      const response = await apiFetch<SendMessageResponse>(
+        `/sessions/${activeSession.id}/reviews/${pendingReviewId}/approve`,
+        { method: "POST" },
+      );
+      const appended: ChatMessage[] = [];
+      if (response.user_message) appended.push(toChatMessage(response.user_message));
+      if (response.assistant_message) appended.push(toChatMessage(response.assistant_message));
+      setMessages((prev) => [...prev, ...appended]);
+      clearPendingReview();
+      setInputText("");
+      setFileName(null);
+      setStep("idle");
+      await refreshSessions();
+    } catch (error) {
+      setStatusMessage(
+        error instanceof ApiError ? error.message : "Failed to dispatch approved message.",
+      );
       setStep("needs_review");
     }
   }
 
-  function handleToggleDismiss(findingId: string) {
-    setFindings((prev) =>
-      recomputePlaceholders(
-        prev.map((f) =>
-          f.id === findingId
-            ? { ...f, status: f.status === "dismissed" ? "pending" : "dismissed" }
-            : f,
-        ),
-      ),
-    );
-  }
-
-  function handleChangeType(findingId: string, nextType: EntityType) {
-    setFindings((prev) =>
-      recomputePlaceholders(
-        prev.map((f) => (f.id === findingId ? { ...f, type: nextType } : f)),
-      ),
-    );
-  }
-
-  function handleAddManual(text: string, start: number, end: number, type: EntityType) {
-    const overlaps = findings.some(
-      (f) => f.status !== "dismissed" && start < f.end && end > f.start,
-    );
-    if (overlaps) {
-      setStatusMessage("Selection overlaps an existing active finding.");
-      return;
+  async function handleReject() {
+    if (!activeSession || !pendingReviewId) return;
+    setStatusMessage(null);
+    setStep("sending");
+    try {
+      await apiFetch<ReviewRejectResponse>(
+        `/sessions/${activeSession.id}/reviews/${pendingReviewId}/reject`,
+        { method: "POST" },
+      );
+      clearPendingReview();
+      setStep("idle");
+      setStatusMessage(
+        "Request rejected and pending payload wiped. No data was sent to the provider.",
+      );
+    } catch (error) {
+      setStatusMessage(
+        error instanceof ApiError ? error.message : "Failed to reject pending review.",
+      );
+      setStep("needs_review");
     }
-    const newFinding: Finding = {
-      id: `manual_${Date.now()}`,
-      type,
-      text,
-      start,
-      end,
-      source: "custom",
-      confidence: 1.0,
-      status: "approved",
-      placeholder: `[${type}_1]`,
-    };
-    setFindings((prev) => recomputePlaceholders([...prev, newFinding]));
-  }
-
-  function handleApproveAndSend() {
-    const masked = buildMaskedText(reviewText, findings);
-    dispatchToProvider(reviewText, masked);
   }
 
   return (
@@ -312,8 +367,8 @@ export function SessionWorkspace() {
         activeSession={activeSession}
         onSelectSession={(id) => {
           setActiveSessionId(id);
-          setFindings([]);
-          setReviewText("");
+          clearPendingReview();
+          setStatusMessage(null);
           setStep("idle");
         }}
         onNewSession={handleNewSession}
@@ -329,9 +384,6 @@ export function SessionWorkspace() {
         fileName={fileName}
         onFileAttach={(name) => {
           setFileName(name);
-          if (!inputText) {
-            setInputText(SAMPLE_CONTRACT);
-          }
         }}
         step={step}
         onScan={handleScan}
@@ -341,16 +393,15 @@ export function SessionWorkspace() {
         <ReviewPanel
           reviewText={reviewText}
           findings={findings}
-          onToggleDismiss={handleToggleDismiss}
-          onChangeType={handleChangeType}
-          onAddManual={handleAddManual}
+          maskedPreview={maskedPreview}
           onApproveAndSend={handleApproveAndSend}
+          onReject={handleReject}
           sending={step === "sending"}
         />
       ) : null}
 
       <ConversationThread
-        messages={messages}
+        messages={activeSessionId ? messages : []}
         showMasked={showMasked}
         providerLabel={selectedModel.display_name}
       />
