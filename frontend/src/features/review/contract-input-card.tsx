@@ -13,6 +13,7 @@ interface ContractInputCardProps {
   fileName: string | null;
   fileSummary?: string | null;
   uploading?: boolean;
+  canScan?: boolean;
   onFileAttach: (file: File) => void;
   step: "idle" | "detecting" | "clean" | "needs_review" | "sending";
   onScan: () => void;
@@ -24,11 +25,13 @@ export function ContractInputCard({
   fileName,
   fileSummary,
   uploading = false,
+  canScan = true,
   onFileAttach,
   step,
   onScan,
 }: ContractInputCardProps) {
   const isWorking = step === "detecting" || step === "sending" || uploading;
+  const submitDisabled = !canScan || !inputText.trim() || isWorking;
 
   return (
     <Card className="nyxora-surface rounded-3xl border ring-0">
@@ -54,10 +57,22 @@ export function ContractInputCard({
           </Label>
           <Textarea
             id="contract-input"
+            name="contract_input"
             rows={4}
             value={inputText}
             onChange={(e) => onInputChange(e.target.value)}
-            placeholder="Paste contract text or ask a follow-up question..."
+            onKeyDown={(e) => {
+              if (
+                !e.nativeEvent.isComposing &&
+                (e.ctrlKey || e.metaKey) &&
+                e.key === "Enter" &&
+                !submitDisabled
+              ) {
+                e.preventDefault();
+                onScan();
+              }
+            }}
+            placeholder="Paste contract text or ask a follow-up question... (Ctrl/⌘ + Enter to scan)"
             className="rounded-2xl p-4"
           />
         </div>
@@ -96,7 +111,7 @@ export function ContractInputCard({
 
           <Button
             type="button"
-            disabled={!inputText.trim() || isWorking}
+            disabled={submitDisabled}
             onClick={onScan}
             className="h-10 w-full cursor-pointer bg-white px-5 text-sm font-semibold text-zinc-950 hover:bg-white/90 sm:w-auto"
           >

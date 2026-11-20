@@ -1,7 +1,18 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { KeyRound, Plus, RefreshCw, ShieldAlert, Trash2, Upload, UserPlus } from "lucide-react";
+import {
+  Activity,
+  CheckCircle2,
+  KeyRound,
+  Plus,
+  RefreshCw,
+  ShieldAlert,
+  Trash2,
+  Upload,
+  UserPlus,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { DashboardShell } from "@/components/nyxora/dashboard-shell";
 import { EntityBadge } from "@/components/nyxora/entity-badge";
@@ -37,7 +48,9 @@ import {
   AuditLogEntry,
   CustomRule,
   DiscoveredModel,
+  GpuTestResult,
   MarkdownRulesImportResult,
+  ModelDiscoveryResponse,
   ProviderConfigOut,
   ProviderDiscoveryResult,
   User,
@@ -50,7 +63,9 @@ export default function OwnerSettingsPage() {
 
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [providers, setProviders] = useState<ProviderConfigOut[]>([]);
+  const [availableModels, setAvailableModels] = useState<DiscoveredModel[]>([]);
   const [keyDrafts, setKeyDrafts] = useState<Record<string, string>>({});
+  const [clearKeyByProvider, setClearKeyByProvider] = useState<Record<string, boolean>>({});
   const [baseUrlDrafts, setBaseUrlDrafts] = useState<Record<string, string>>({});
   const [discoveredByProvider, setDiscoveredByProvider] = useState<
     Record<string, { source: string; models: DiscoveredModel[] }>
@@ -59,6 +74,9 @@ export default function OwnerSettingsPage() {
   const [ws, setWs] = useState<WorkspaceSettings | null>(null);
   const [gpuKeyDraft, setGpuKeyDraft] = useState("");
   const [clearGpuKey, setClearGpuKey] = useState(false);
+  const [testingGpu, setTestingGpu] = useState(false);
+  const [gpuTestResult, setGpuTestResult] = useState<GpuTestResult | null>(null);
+
   const [rules, setRules] = useState<CustomRule[]>([]);
   const [importingMarkdown, setImportingMarkdown] = useState(false);
   const [pattern, setPattern] = useState("");
@@ -66,6 +84,7 @@ export default function OwnerSettingsPage() {
   const [isRegex, setIsRegex] = useState(false);
 
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [refreshingAudit, setRefreshingAudit] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserName, setNewUserName] = useState("");
@@ -74,12 +93,13 @@ export default function OwnerSettingsPage() {
 
   const loadAll = useCallback(async () => {
     if (!isOwner) return;
-    const [provList, wsData, ruleList, logs, userList] = await Promise.all([
+    const [provList, wsData, ruleList, logs, userList, modelResp] = await Promise.all([
       apiFetch<ProviderConfigOut[]>("/settings/providers"),
       apiFetch<WorkspaceSettings>("/settings/workspace"),
       apiFetch<CustomRule[]>("/rules"),
-      apiFetch<AuditLogEntry[]>("/audit?limit=15"),
+      apiFetch<AuditLogEntry[]>("/audit?limit=50"),
       apiFetch<User[]>("/auth/users"),
+      apiFetch<ModelDiscoveryResponse>("/providers/models"),
     ]);
     setProviders(provList);
     setBaseUrlDrafts(
@@ -89,6 +109,7 @@ export default function OwnerSettingsPage() {
     setRules(ruleList);
     setAuditLogs(logs);
     setUsers(userList);
+    setAvailableModels(modelResp.models);
   }, [isOwner]);
 
   useEffect(() => {
@@ -98,10 +119,11 @@ export default function OwnerSettingsPage() {
       apiFetch<ProviderConfigOut[]>("/settings/providers"),
       apiFetch<WorkspaceSettings>("/settings/workspace"),
       apiFetch<CustomRule[]>("/rules"),
-      apiFetch<AuditLogEntry[]>("/audit?limit=15"),
+      apiFetch<AuditLogEntry[]>("/audit?limit=50"),
       apiFetch<User[]>("/auth/users"),
+      apiFetch<ModelDiscoveryResponse>("/providers/models"),
     ])
-      .then(([provList, wsData, ruleList, logs, userList]) => {
+      .then(([provList, wsData, ruleList, logs, userList, modelResp]) => {
         if (!active) return;
         setProviders(provList);
         setBaseUrlDrafts(
@@ -111,6 +133,7 @@ export default function OwnerSettingsPage() {
         setRules(ruleList);
         setAuditLogs(logs);
         setUsers(userList);
+        setAvailableModels(modelResp.models);
       })
       .catch(() => {
         if (active) setStatusMessage("Could not load owner settings.");
@@ -120,6 +143,15 @@ export default function OwnerSettingsPage() {
     };
   }, [isOwner]);
 
+  async function refreshAvailableModels() {
+    try {
+      const modelResp = await apiFetch<ModelDiscoveryResponse>("/providers/models");
+      setAvailableModels(modelResp.models);
+    } catch {
+      // Non-blocking refresh.
+    }
+  }
+
   async function handleSaveProvider(item: ProviderConfigOut) {
     setStatusMessage(null);
     try {
@@ -127,6 +159,7 @@ export default function OwnerSettingsPage() {
         method: "PUT",
         body: JSON.stringify({
           api_key: keyDrafts[item.provider]?.trim() || null,
+          clear_api_key: Boolean(clearKeyByProvider[item.provider]),
           base_url: baseUrlDrafts[item.provider]?.trim() || null,
           enabled: item.enabled,
           enabled_models: item.enabled_models,
@@ -136,7 +169,9 @@ export default function OwnerSettingsPage() {
         prev.map((p) => (p.provider === updated.provider ? updated : p)),
       );
       setKeyDrafts((prev) => ({ ...prev, [item.provider]: "" }));
+      setClearKeyByProvider((prev) => ({ ...prev, [item.provider]: false }));
       setStatusMessage(`Saved ${item.label} settings (API key encrypted at rest).`);
+      await refreshAvailableModels();
     } catch (error) {
       setStatusMessage(error instanceof ApiError ? error.message : "Failed to save provider.");
     }
@@ -147,7 +182,13 @@ export default function OwnerSettingsPage() {
     try {
       const result = await apiFetch<ProviderDiscoveryResult>(
         `/settings/providers/${providerId}/discover`,
-        { method: "POST" },
+        {
+          method: "POST",
+          body: JSON.stringify({
+            api_key: keyDrafts[providerId]?.trim() || null,
+            base_url: baseUrlDrafts[providerId]?.trim() || null,
+          }),
+        },
       );
       setDiscoveredByProvider((prev) => ({
         ...prev,
@@ -203,6 +244,31 @@ export default function OwnerSettingsPage() {
       setStatusMessage("Saved workspace defaults & rulebook settings.");
     } catch (error) {
       setStatusMessage(error instanceof ApiError ? error.message : "Could not save settings.");
+    }
+  }
+
+  async function handleTestGpu() {
+    if (!ws) return;
+    setTestingGpu(true);
+    setGpuTestResult(null);
+    setStatusMessage(null);
+    try {
+      const result = await apiFetch<GpuTestResult>("/settings/workspace/test-gpu", {
+        method: "POST",
+        body: JSON.stringify({
+          gpu_llm_endpoint: ws.gpu_llm_endpoint,
+          gpu_llm_model: ws.gpu_llm_model,
+          gpu_llm_api_key: gpuKeyDraft.trim() ? gpuKeyDraft.trim() : null,
+          clear_gpu_llm_api_key: clearGpuKey,
+        }),
+      });
+      setGpuTestResult(result);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof ApiError ? error.message : "Could not test GPU SLM connection.",
+      );
+    } finally {
+      setTestingGpu(false);
     }
   }
 
@@ -302,6 +368,43 @@ export default function OwnerSettingsPage() {
     }
   }
 
+  async function handleToggleUserStatus(target: User, nextActive: boolean) {
+    setStatusMessage(null);
+    try {
+      const updated = await apiFetch<User>(`/auth/users/${target.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: nextActive }),
+      });
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      setStatusMessage(
+        `${updated.email} is now ${updated.is_active ? "active" : "disabled"}.`,
+      );
+    } catch (error) {
+      setStatusMessage(
+        error instanceof ApiError ? error.message : "Could not update user status.",
+      );
+    }
+  }
+
+  async function handleRefreshAudit() {
+    setRefreshingAudit(true);
+    try {
+      const logs = await apiFetch<AuditLogEntry[]>("/audit?limit=50");
+      setAuditLogs(logs);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof ApiError ? error.message : "Could not refresh audit log.",
+      );
+    } finally {
+      setRefreshingAudit(false);
+    }
+  }
+
+  const activeDefaultModelValue =
+    ws?.default_provider && ws?.default_model
+      ? `${ws.default_provider}::${ws.default_model}`
+      : "";
+
   return (
     <DashboardShell
       title="Owner Settings"
@@ -347,6 +450,7 @@ export default function OwnerSettingsPage() {
           <TabsContent value="providers" className="space-y-4">
             {providers.map((item) => {
               const disc = discoveredByProvider[item.provider];
+              const isClearing = Boolean(clearKeyByProvider[item.provider]);
               return (
                 <Card key={item.provider} className="nyxora-surface rounded-3xl border ring-0">
                   <CardHeader>
@@ -393,17 +497,51 @@ export default function OwnerSettingsPage() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       {item.requires_api_key || item.provider === "openai_compatible" ? (
                         <div className="space-y-1.5">
-                          <Label htmlFor={`key-${item.provider}`} className="text-xs text-white/75">
-                            API key {item.key_hint ? `(saved: ${item.key_hint})` : ""}
-                          </Label>
+                          <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor={`key-${item.provider}`} className="text-xs text-white/75">
+                              API key {item.key_hint ? `(saved: ${item.key_hint})` : ""}
+                            </Label>
+                            {item.key_hint ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setClearKeyByProvider((prev) => ({
+                                    ...prev,
+                                    [item.provider]: !prev[item.provider],
+                                  }))
+                                }
+                                className="cursor-pointer text-[11px] text-red-300 hover:text-red-200"
+                              >
+                                {isClearing ? "Keep existing key" : "Clear stored key"}
+                              </button>
+                            ) : null}
+                          </div>
                           <Input
                             id={`key-${item.provider}`}
+                            name={`api_key_${item.provider}`}
                             type="password"
+                            autoComplete="off"
+                            spellCheck={false}
+                            autoCapitalize="none"
+                            autoCorrect="off"
                             value={keyDrafts[item.provider] ?? ""}
-                            onChange={(e) =>
-                              setKeyDrafts((prev) => ({ ...prev, [item.provider]: e.target.value }))
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setKeyDrafts((prev) => ({ ...prev, [item.provider]: next }));
+                              if (next) {
+                                setClearKeyByProvider((prev) => ({
+                                  ...prev,
+                                  [item.provider]: false,
+                                }));
+                              }
+                            }}
+                            placeholder={
+                              isClearing
+                                ? "Stored key will be removed on Save"
+                                : item.is_configured
+                                  ? "Enter new key to rotate"
+                                  : "sk-..."
                             }
-                            placeholder={item.is_configured ? "Enter new key to rotate" : "sk-..."}
                           />
                         </div>
                       ) : null}
@@ -415,7 +553,11 @@ export default function OwnerSettingsPage() {
                           </Label>
                           <Input
                             id={`url-${item.provider}`}
+                            name={`base_url_${item.provider}`}
                             type="url"
+                            spellCheck={false}
+                            autoCapitalize="none"
+                            autoCorrect="off"
                             value={baseUrlDrafts[item.provider] ?? ""}
                             onChange={(e) =>
                               setBaseUrlDrafts((prev) => ({
@@ -429,29 +571,57 @@ export default function OwnerSettingsPage() {
                       ) : null}
                     </div>
 
+                    {item.enabled_models.length > 0 && !disc ? (
+                      <div className="space-y-1.5 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+                        <p className="text-xs text-white/60">
+                          Enabled models ({item.enabled_models.length}) — click Discover models to
+                          edit:
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {item.enabled_models.map((modelId) => (
+                            <Badge
+                              key={modelId}
+                              variant="outline"
+                              className="rounded-full border-white/15 bg-white/[0.05] font-mono text-[11px] text-white/85"
+                            >
+                              {modelId}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
                     {disc ? (
                       <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
                         <p className="text-xs text-white/65">
-                          Discovered models ({disc.source}) — toggle which ones users can select:
+                          Discovered models ({disc.source}) — toggle which ones users can select,
+                          then click Save provider:
                         </p>
-                        <div className="flex flex-wrap gap-2">
-                          {disc.models.map((m) => {
-                            const active = item.enabled_models.includes(m.model_id);
-                            return (
-                              <Button
-                                key={m.model_id}
-                                type="button"
-                                size="xs"
-                                variant={active ? "default" : "outline"}
-                                onClick={() => toggleModelForProvider(item.provider, m.model_id)}
-                                className="cursor-pointer"
-                              >
-                                {m.display_name}
-                                {m.supports_thinking ? " · thinking" : ""}
-                              </Button>
-                            );
-                          })}
-                        </div>
+                        {disc.models.length === 0 ? (
+                          <p className="text-xs text-amber-200/80">
+                            No models returned. Check your API key or Base URL.
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {disc.models.map((m) => {
+                              const active = item.enabled_models.includes(m.model_id);
+                              return (
+                                <Button
+                                  key={m.model_id}
+                                  type="button"
+                                  size="xs"
+                                  variant={active ? "default" : "outline"}
+                                  aria-pressed={active}
+                                  onClick={() => toggleModelForProvider(item.provider, m.model_id)}
+                                  className="cursor-pointer"
+                                >
+                                  {m.display_name}
+                                  {m.supports_thinking ? " · thinking" : ""}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     ) : null}
 
@@ -485,7 +655,7 @@ export default function OwnerSettingsPage() {
             {ws ? (
               <Card className="nyxora-surface rounded-3xl border ring-0">
                 <CardHeader>
-                  <CardTitle className="text-base font-semibold text-white">
+                  <CardTitle id="workspace-settings-heading" className="text-base font-semibold text-white">
                     Review defaults &amp; GPU rulebook
                   </CardTitle>
                   <CardDescription className="text-white/60">
@@ -493,7 +663,11 @@ export default function OwnerSettingsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSaveWorkspace} className="space-y-5">
+                  <form
+                    onSubmit={handleSaveWorkspace}
+                    aria-labelledby="workspace-settings-heading"
+                    className="space-y-5"
+                  >
                     <div className="flex flex-wrap items-center gap-6">
                       <div className="flex items-center gap-2.5">
                         <Switch
@@ -524,7 +698,41 @@ export default function OwnerSettingsPage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="default-model" className="text-xs text-white/75">
+                          Default provider &amp; model
+                        </Label>
+                        <Select
+                          value={activeDefaultModelValue}
+                          disabled={availableModels.length === 0}
+                          onValueChange={(value) => {
+                            if (!value) return;
+                            const [prov, ...rest] = value.split("::");
+                            const modelId = rest.join("::");
+                            setWs({
+                              ...ws,
+                              default_provider: prov,
+                              default_model: modelId,
+                            });
+                          }}
+                        >
+                          <SelectTrigger id="default-model" className="w-full rounded-full">
+                            <SelectValue placeholder="Enable a provider first" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableModels.map((m) => {
+                              const value = `${m.provider}::${m.model_id}`;
+                              return (
+                                <SelectItem key={value} value={value}>
+                                  {m.display_name} ({m.provider_label})
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <div className="space-y-1.5">
                         <Label htmlFor="default-mode" className="text-xs text-white/75">
                           Default review mode
@@ -575,66 +783,137 @@ export default function OwnerSettingsPage() {
                     </div>
 
                     {ws.gpu_llm_enabled ? (
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-1.5 sm:col-span-2">
-                          <Label htmlFor="gpu-endpoint" className="text-xs text-white/75">
-                            GPU Server OpenAI-compatible Endpoint (vLLM / RunPod / Ollama)
-                          </Label>
-                          <Input
-                            id="gpu-endpoint"
-                            value={ws.gpu_llm_endpoint ?? ""}
-                            onChange={(e) => setWs({ ...ws, gpu_llm_endpoint: e.target.value })}
-                            placeholder="https://<pod-id>-8000.proxy.runpod.net/v1"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label htmlFor="gpu-model" className="text-xs text-white/75">
-                            SLM Model ID
-                          </Label>
-                          <Input
-                            id="gpu-model"
-                            value={ws.gpu_llm_model ?? ""}
-                            onChange={(e) => setWs({ ...ws, gpu_llm_model: e.target.value })}
-                            placeholder="Qwen/Qwen2.5-7B-Instruct-AWQ"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="gpu-api-key" className="text-xs text-white/75">
-                              Optional Bearer API Key{" "}
-                              {ws.gpu_llm_key_hint ? (
-                                <span className="font-mono text-[#b8a5ff]">
-                                  ({ws.gpu_llm_key_hint})
-                                </span>
-                              ) : null}
+                      <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <Label htmlFor="gpu-endpoint" className="text-xs text-white/75">
+                              GPU Server OpenAI-compatible Endpoint (vLLM / RunPod / Ollama)
                             </Label>
-                            {ws.gpu_llm_key_configured ? (
-                              <button
-                                type="button"
-                                onClick={() => setClearGpuKey((prev) => !prev)}
-                                className="cursor-pointer text-[11px] text-red-300 hover:text-red-200"
-                              >
-                                {clearGpuKey ? "Keep existing key" : "Clear stored key"}
-                              </button>
+                            <Input
+                              id="gpu-endpoint"
+                              name="gpu_llm_endpoint"
+                              type="url"
+                              spellCheck={false}
+                              autoCapitalize="none"
+                              autoCorrect="off"
+                              value={ws.gpu_llm_endpoint ?? ""}
+                              onChange={(e) => setWs({ ...ws, gpu_llm_endpoint: e.target.value })}
+                              placeholder="https://<pod-id>-8000.proxy.runpod.net/v1"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor="gpu-model" className="text-xs text-white/75">
+                              SLM Model ID
+                            </Label>
+                            <Input
+                              id="gpu-model"
+                              name="gpu_llm_model"
+                              spellCheck={false}
+                              autoCapitalize="none"
+                              autoCorrect="off"
+                              value={ws.gpu_llm_model ?? ""}
+                              onChange={(e) => setWs({ ...ws, gpu_llm_model: e.target.value })}
+                              placeholder="Qwen/Qwen2.5-7B-Instruct-AWQ"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <Label htmlFor="gpu-api-key" className="text-xs text-white/75">
+                                Optional Bearer API Key{" "}
+                                {ws.gpu_llm_key_hint ? (
+                                  <span className="font-mono text-[#b8a5ff]">
+                                    ({ws.gpu_llm_key_hint})
+                                  </span>
+                                ) : null}
+                              </Label>
+                              {ws.gpu_llm_key_configured ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setClearGpuKey((prev) => !prev)}
+                                  className="cursor-pointer text-[11px] text-red-300 hover:text-red-200"
+                                >
+                                  {clearGpuKey ? "Keep existing key" : "Clear stored key"}
+                                </button>
+                              ) : null}
+                            </div>
+                            <Input
+                              id="gpu-api-key"
+                              name="gpu_llm_api_key"
+                              type="password"
+                              autoComplete="off"
+                              spellCheck={false}
+                              autoCapitalize="none"
+                              autoCorrect="off"
+                              value={gpuKeyDraft}
+                              onChange={(e) => {
+                                setGpuKeyDraft(e.target.value);
+                                if (e.target.value) setClearGpuKey(false);
+                              }}
+                              placeholder={
+                                ws.gpu_llm_key_configured
+                                  ? "Enter new key to rotate (leave blank to keep)"
+                                  : "Optional token for protected vLLM endpoints"
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={testingGpu || !ws.gpu_llm_endpoint?.trim()}
+                            onClick={handleTestGpu}
+                            className="cursor-pointer"
+                          >
+                            <Activity className="size-3.5" aria-hidden="true" />
+                            <span>{testingGpu ? "Testing connection..." : "Test GPU connection"}</span>
+                          </Button>
+                          <p className="text-xs text-white/55">
+                            Probes <code className="font-mono text-white/75">/models</code> using
+                            your current draft settings.
+                          </p>
+                        </div>
+
+                        {gpuTestResult ? (
+                          <div
+                            role="status"
+                            className={`space-y-2 rounded-2xl border p-3 text-xs ${
+                              gpuTestResult.ok
+                                ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-100"
+                                : "border-amber-400/35 bg-amber-500/10 text-amber-100"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 font-medium">
+                              {gpuTestResult.ok ? (
+                                <CheckCircle2 className="size-4 text-emerald-300" aria-hidden="true" />
+                              ) : (
+                                <XCircle className="size-4 text-amber-300" aria-hidden="true" />
+                              )}
+                              <span>{gpuTestResult.detail}</span>
+                            </div>
+                            {gpuTestResult.available_models.length > 0 && !gpuTestResult.model_found ? (
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span className="text-white/70">Use detected model:</span>
+                                {gpuTestResult.available_models.map((mid) => (
+                                  <Button
+                                    key={mid}
+                                    type="button"
+                                    size="xs"
+                                    variant="outline"
+                                    onClick={() => setWs({ ...ws, gpu_llm_model: mid })}
+                                    className="cursor-pointer font-mono text-[11px]"
+                                  >
+                                    {mid}
+                                  </Button>
+                                ))}
+                              </div>
                             ) : null}
                           </div>
-                          <Input
-                            id="gpu-api-key"
-                            type="password"
-                            value={gpuKeyDraft}
-                            onChange={(e) => {
-                              setGpuKeyDraft(e.target.value);
-                              if (e.target.value) setClearGpuKey(false);
-                            }}
-                            placeholder={
-                              ws.gpu_llm_key_configured
-                                ? "Enter new key to rotate (leave blank to keep)"
-                                : "Optional token for protected vLLM endpoints"
-                            }
-                          />
-                        </div>
+                        ) : null}
                       </div>
                     ) : null}
 
@@ -644,6 +923,7 @@ export default function OwnerSettingsPage() {
                       </Label>
                       <Textarea
                         id="rulebook-prompt"
+                        name="rulebook_prompt"
                         rows={4}
                         value={ws.rulebook_prompt}
                         onChange={(e) => setWs({ ...ws, rulebook_prompt: e.target.value })}
@@ -668,7 +948,7 @@ export default function OwnerSettingsPage() {
             <Card className="nyxora-surface rounded-3xl border ring-0">
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold text-white">
+                  <CardTitle id="custom-rules-heading" className="text-base font-semibold text-white">
                     Company custom rules
                   </CardTitle>
                   <CardDescription className="text-white/60">
@@ -703,6 +983,7 @@ export default function OwnerSettingsPage() {
               <CardContent className="space-y-6">
                 <form
                   onSubmit={handleAddRule}
+                  aria-labelledby="custom-rules-heading"
                   className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-[1fr_180px_auto_auto] lg:items-end"
                 >
                   <div className="space-y-1.5">
@@ -711,7 +992,11 @@ export default function OwnerSettingsPage() {
                     </Label>
                     <Input
                       id="rule-pattern"
+                      name="pattern"
                       required
+                      spellCheck={false}
+                      autoCapitalize="none"
+                      autoCorrect="off"
                       value={pattern}
                       onChange={(e) => setPattern(e.target.value)}
                       placeholder="e.g. PROJECT-ORION"
@@ -762,51 +1047,58 @@ export default function OwnerSettingsPage() {
                   </Button>
                 </form>
 
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-white/10 hover:bg-transparent">
-                      <TableHead className="text-xs text-white/55">Pattern</TableHead>
-                      <TableHead className="text-xs text-white/55">Type</TableHead>
-                      <TableHead className="text-xs text-white/55">Mode</TableHead>
-                      <TableHead className="text-xs text-white/55">Enabled</TableHead>
-                      <TableHead className="text-right text-xs text-white/55">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rules.map((rule) => (
-                      <TableRow key={rule.id} className="border-white/[0.07] hover:bg-white/[0.03]">
-                        <TableCell className="font-mono text-xs text-white">
-                          {rule.pattern}
-                        </TableCell>
-                        <TableCell>
-                          <EntityBadge entityType={rule.entity_type} />
-                        </TableCell>
-                        <TableCell className="text-xs text-white/70">
-                          {rule.is_regex ? "Regex" : "Keyword"}
-                        </TableCell>
-                        <TableCell>
-                          <Switch
-                            aria-label={`Toggle ${rule.pattern}`}
-                            checked={rule.enabled}
-                            onCheckedChange={(checked) => handleToggleRule(rule, checked)}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Delete ${rule.pattern}`}
-                            onClick={() => handleDeleteRule(rule.id)}
-                            className="cursor-pointer text-white/60 hover:bg-red-500/15 hover:text-red-200"
-                          >
-                            <Trash2 className="size-3.5" aria-hidden="true" />
-                          </Button>
-                        </TableCell>
+                <div
+                  tabIndex={0}
+                  role="region"
+                  aria-labelledby="custom-rules-heading"
+                  className="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b82ff]"
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/10 hover:bg-transparent">
+                        <TableHead className="text-xs text-white/55">Pattern</TableHead>
+                        <TableHead className="text-xs text-white/55">Type</TableHead>
+                        <TableHead className="text-xs text-white/55">Mode</TableHead>
+                        <TableHead className="text-xs text-white/55">Enabled</TableHead>
+                        <TableHead className="text-right text-xs text-white/55">Action</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {rules.map((rule) => (
+                        <TableRow key={rule.id} className="border-white/[0.07] hover:bg-white/[0.03]">
+                          <TableCell className="font-mono text-xs text-white">
+                            {rule.pattern}
+                          </TableCell>
+                          <TableCell>
+                            <EntityBadge entityType={rule.entity_type} />
+                          </TableCell>
+                          <TableCell className="text-xs text-white/70">
+                            {rule.is_regex ? "Regex" : "Keyword"}
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              aria-label={`Toggle ${rule.pattern}`}
+                              checked={rule.enabled}
+                              onCheckedChange={(checked) => handleToggleRule(rule, checked)}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Delete ${rule.pattern}`}
+                              onClick={() => handleDeleteRule(rule.id)}
+                              className="cursor-pointer text-white/60 hover:bg-red-500/15 hover:text-red-200"
+                            >
+                              <Trash2 className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -814,16 +1106,18 @@ export default function OwnerSettingsPage() {
           <TabsContent value="users" className="space-y-6">
             <Card className="nyxora-surface rounded-3xl border ring-0">
               <CardHeader>
-                <CardTitle className="text-base font-semibold text-white">
+                <CardTitle id="provision-user-heading" className="text-base font-semibold text-white">
                   Provision workspace account
                 </CardTitle>
                 <CardDescription className="text-white/60">
-                  Public sign-up is disabled. Only the Owner can add accounts ({users.length} active).
+                  Public sign-up is disabled. Only the Owner can add or deactivate accounts (
+                  {users.filter((u) => u.is_active).length} active / {users.length} total).
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <form
                   onSubmit={handleCreateUser}
+                  aria-labelledby="provision-user-heading"
                   className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_130px_auto] lg:items-end"
                 >
                   <div className="space-y-1">
@@ -832,6 +1126,8 @@ export default function OwnerSettingsPage() {
                     </Label>
                     <Input
                       id="new-user-name"
+                      name="full_name"
+                      autoComplete="name"
                       required
                       value={newUserName}
                       onChange={(e) => setNewUserName(e.target.value)}
@@ -844,7 +1140,12 @@ export default function OwnerSettingsPage() {
                     </Label>
                     <Input
                       id="new-user-email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
+                      spellCheck={false}
+                      autoCapitalize="none"
+                      autoCorrect="off"
                       required
                       value={newUserEmail}
                       onChange={(e) => setNewUserEmail(e.target.value)}
@@ -857,7 +1158,9 @@ export default function OwnerSettingsPage() {
                     </Label>
                     <Input
                       id="new-user-pass"
+                      name="password"
                       type="password"
+                      autoComplete="new-password"
                       minLength={8}
                       required
                       value={newUserPassword}
@@ -892,50 +1195,193 @@ export default function OwnerSettingsPage() {
                     <span>Add</span>
                   </Button>
                 </form>
+
+                <div
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Provisioned workspace accounts"
+                  className="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b82ff]"
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/10 hover:bg-transparent">
+                        <TableHead className="text-xs text-white/55">Name</TableHead>
+                        <TableHead className="text-xs text-white/55">Email</TableHead>
+                        <TableHead className="text-xs text-white/55">Role</TableHead>
+                        <TableHead className="text-xs text-white/55">Status</TableHead>
+                        <TableHead className="text-right text-xs text-white/55">Active</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((account) => {
+                        const isSelf = account.id === user?.id;
+                        return (
+                          <TableRow
+                            key={account.id}
+                            className="border-white/[0.07] hover:bg-white/[0.03]"
+                          >
+                            <TableCell className="text-xs font-medium text-white">
+                              {account.full_name}
+                              {isSelf ? (
+                                <span className="ml-1.5 text-[11px] text-white/50">(you)</span>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-white/75">
+                              {account.email}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className="rounded-full border-white/15 bg-white/[0.04] text-[11px] capitalize text-white/80"
+                              >
+                                {account.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  account.is_active
+                                    ? "rounded-full border-emerald-400/40 bg-emerald-500/15 text-[11px] text-emerald-200"
+                                    : "rounded-full border-red-400/35 bg-red-500/10 text-[11px] text-red-200"
+                                }
+                              >
+                                {account.is_active ? "Active" : "Disabled"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="inline-flex justify-end">
+                                <Switch
+                                  aria-label={`Toggle active status for ${account.email}`}
+                                  checked={account.is_active}
+                                  disabled={isSelf}
+                                  onCheckedChange={(checked) =>
+                                    handleToggleUserStatus(account, checked)
+                                  }
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
 
             <Card className="nyxora-surface rounded-3xl border ring-0">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-white">
-                  Metadata-only audit log
-                </CardTitle>
-                <CardDescription className="text-white/60">
-                  Live from GET /api/audit · Never stores raw text, prompts, or vault mappings.
-                </CardDescription>
+              <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <CardTitle id="audit-log-heading" className="text-base font-semibold text-white">
+                    Metadata-only audit log
+                  </CardTitle>
+                  <CardDescription className="text-white/60">
+                    Live from GET /api/audit · Never stores raw text, prompts, or vault mappings.
+                  </CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={refreshingAudit}
+                  onClick={handleRefreshAudit}
+                  className="cursor-pointer"
+                >
+                  <RefreshCw
+                    className={`size-3.5 ${refreshingAudit ? "animate-spin" : ""}`}
+                    aria-hidden="true"
+                  />
+                  <span>Refresh</span>
+                </Button>
               </CardHeader>
               <CardContent>
                 {auditLogs.length === 0 ? (
                   <p className="text-sm text-white/55">No audit events recorded yet.</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-transparent">
-                        <TableHead className="text-xs text-white/55">Event</TableHead>
-                        <TableHead className="text-xs text-white/55">Provider</TableHead>
-                        <TableHead className="text-xs text-white/55">Session</TableHead>
-                        <TableHead className="text-right text-xs text-white/55">Timestamp</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {auditLogs.map((entry) => (
-                        <TableRow key={entry.id} className="border-white/[0.07] hover:bg-white/[0.03]">
-                          <TableCell className="font-mono text-xs text-[#a78bfa]">
-                            {entry.action}
-                          </TableCell>
-                          <TableCell className="text-xs text-white/75">
-                            {entry.provider ?? "—"}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs text-white/60">
-                            {entry.gateway_session_id ? entry.gateway_session_id.slice(0, 8) : "—"}
-                          </TableCell>
-                          <TableCell className="text-right text-xs text-white/60">
-                            {new Date(entry.created_at).toLocaleString()}
-                          </TableCell>
+                  <div
+                    tabIndex={0}
+                    role="region"
+                    aria-labelledby="audit-log-heading"
+                    className="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b82ff]"
+                  >
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-white/10 hover:bg-transparent">
+                          <TableHead className="text-xs text-white/55">Event</TableHead>
+                          <TableHead className="text-xs text-white/55">Provider</TableHead>
+                          <TableHead className="text-xs text-white/55">Decision</TableHead>
+                          <TableHead className="text-xs text-white/55">Entities</TableHead>
+                          <TableHead className="text-xs text-white/55">Session</TableHead>
+                          <TableHead className="text-right text-xs text-white/55">Timestamp</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {auditLogs.map((entry) => {
+                          const counts = entry.entity_counts
+                            ? Object.entries(entry.entity_counts)
+                            : [];
+                          return (
+                            <TableRow
+                              key={entry.id}
+                              className="border-white/[0.07] hover:bg-white/[0.03]"
+                            >
+                              <TableCell className="font-mono text-xs text-[#a78bfa]">
+                                {entry.action}
+                              </TableCell>
+                              <TableCell className="text-xs text-white/75">
+                                {entry.provider ?? "—"}
+                              </TableCell>
+                              <TableCell>
+                                {entry.approved === null ? (
+                                  <span className="text-xs text-white/45">—</span>
+                                ) : entry.approved ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="rounded-full border-emerald-400/40 bg-emerald-500/15 text-[10px] text-emerald-200"
+                                  >
+                                    Approved
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="rounded-full border-red-400/35 bg-red-500/10 text-[10px] text-red-200"
+                                  >
+                                    Rejected
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {counts.length === 0 ? (
+                                  <span className="text-xs text-white/45">—</span>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {counts.map(([key, count]) => (
+                                      <Badge
+                                        key={key}
+                                        variant="outline"
+                                        className="rounded-full border-white/15 bg-white/[0.04] font-mono text-[10px] text-white/80"
+                                      >
+                                        {key}:{count}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs text-white/60">
+                                {entry.gateway_session_id
+                                  ? entry.gateway_session_id.slice(0, 8)
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-right text-xs text-white/60">
+                                {new Date(entry.created_at).toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>

@@ -166,6 +166,16 @@ export interface MarkdownRulesImportResult {
   rulebook_prompt: string;
 }
 
+export interface GpuTestResult {
+  ok: boolean;
+  endpoint: string;
+  model: string;
+  latency_ms: number | null;
+  available_models: string[];
+  model_found: boolean;
+  detail: string;
+}
+
 export class ApiError extends Error {
   status: number;
 

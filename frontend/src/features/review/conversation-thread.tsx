@@ -31,9 +31,9 @@ export function ConversationThread({
           }`}
         >
           <div className="mb-1.5 text-xs font-medium text-[#b8a5ff]">
-            {message.role === "user" ? "You" : providerLabel}
+            {message.role === "user" ? "You" : (message.modelLabel ?? providerLabel)}
           </div>
-          <p className="text-sm leading-relaxed text-white/90">
+          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-white/90">
             {showMasked ? message.maskedText : message.unmaskedText}
           </p>
         </div>
