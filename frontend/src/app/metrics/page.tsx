@@ -1,6 +1,7 @@
 "use client";
 
-import { Info } from "lucide-react";
+import { Info, ShieldAlert } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 import { DashboardShell } from "@/components/nyxora/dashboard-shell";
 import { EntityBadge } from "@/components/nyxora/entity-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,11 +35,23 @@ const ABLATION_LAYERS = [
 ] as const;
 
 export default function MetricsPage() {
+  const { user } = useAuth();
+
   return (
     <DashboardShell
       title="Evaluation & Ablation Metrics"
       subtitle="Recall, precision, leak-free contract rate, layer-by-layer ablation, and unmask round-trip accuracy."
     >
+      {user?.role !== "owner" ? (
+        <Alert className="nyxora-surface rounded-3xl border-amber-400/35 text-amber-100">
+          <ShieldAlert aria-hidden="true" />
+          <AlertTitle>Owner access required</AlertTitle>
+          <AlertDescription className="text-amber-200/80">
+            Evaluation benchmarks are restricted to the workspace Owner.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <>
       <Alert className="nyxora-surface rounded-3xl border-white/12 text-white">
         <Info className="text-[#a78bfa]" aria-hidden="true" />
         <AlertTitle>Awaiting evaluation run</AlertTitle>
@@ -144,6 +157,8 @@ export default function MetricsPage() {
           </TabsContent>
         ))}
       </Tabs>
+        </>
+      )}
     </DashboardShell>
   );
 }

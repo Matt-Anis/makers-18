@@ -21,9 +21,8 @@ def new_uuid() -> str:
 class UserRole(StrEnum):
     """Role assigned to an authenticated workspace user."""
 
-    REQUESTER = "requester"
-    REVIEWER = "reviewer"
-    ADMIN = "admin"
+    OWNER = "owner"
+    USER = "user"
 
 
 class GatewaySessionStatus(StrEnum):
@@ -41,7 +40,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(120), nullable=False)
-    role: Mapped[str] = mapped_column(String(32), nullable=False, default=UserRole.REQUESTER.value)
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default=UserRole.USER.value)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
@@ -146,3 +145,54 @@ class AuditLog(Base):
     approved: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     entity_counts: Mapped[dict[str, int] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False, default=utcnow)
+
+
+class ProviderConfig(Base):
+    """Owner-configured external AI provider settings with Fernet-encrypted API key."""
+
+    __tablename__ = "provider_configs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    provider: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    encrypted_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    key_hint: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    base_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    enabled_models: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class WorkspaceSettings(Base):
+    """Singleton workspace settings managed by the Owner (modes, defaults, rulebook)."""
+
+    __tablename__ = "workspace_settings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default="default")
+    allow_auto_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    default_review_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    default_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    default_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    default_thinking_effort: Mapped[str] = mapped_column(String(16), nullable=False, default="medium")
+    rulebook_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    gpu_llm_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    gpu_llm_endpoint: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class CustomRule(Base):
+    """Company-specific keyword or regex rule managed by the Owner."""
+
+    __tablename__ = "custom_rules"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    pattern: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(32), nullable=False, default="CUSTOM")
+    is_regex: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

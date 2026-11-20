@@ -28,7 +28,7 @@ export function ContractInputCard({
 
   return (
     <Card className="nyxora-surface rounded-3xl border ring-0">
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle className="text-sm font-semibold text-white">
           Contract input &amp; local detection
         </CardTitle>
@@ -58,7 +58,7 @@ export function ContractInputCard({
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <label
               htmlFor="contract-file-upload"
@@ -91,7 +91,7 @@ export function ContractInputCard({
             type="button"
             disabled={!inputText.trim() || isWorking}
             onClick={onScan}
-            className="h-9 cursor-pointer bg-white px-5 text-sm font-semibold text-zinc-950 hover:bg-white/90"
+            className="h-10 w-full cursor-pointer bg-white px-5 text-sm font-semibold text-zinc-950 hover:bg-white/90 sm:w-auto"
           >
             {step === "detecting"
               ? "Detecting locally..."

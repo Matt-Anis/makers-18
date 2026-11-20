@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Workspace" },
-  { href: "/rules", label: "Rules & Audit", adminOnly: true },
-  { href: "/metrics", label: "Metrics" },
+  { href: "/rules", label: "Owner Settings", ownerOnly: true },
+  { href: "/metrics", label: "Metrics", ownerOnly: true },
 ] as const;
 
 export function DashboardShell({
@@ -49,14 +49,14 @@ export function DashboardShell({
   }
 
   const visibleNav = NAV_ITEMS.filter(
-    (item) => !("adminOnly" in item && item.adminOnly) || user.role === "admin",
+    (item) => !("ownerOnly" in item && item.ownerOnly) || user.role === "owner",
   );
 
   return (
     <div className="relative min-h-screen text-white">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07060c]/60 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex flex-wrap items-center gap-6">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-3.5 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <NyxoraWordmark href="/chat" className="text-lg sm:text-xl" />
 
             <nav aria-label="Primary" className="flex flex-wrap items-center gap-1.5">
@@ -68,7 +68,7 @@ export function DashboardShell({
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "rounded-full px-3.5 py-1.5 text-sm font-medium transition-[background-color,color] duration-200 ease-out",
+                      "rounded-full px-3.5 py-1.5 text-xs font-medium transition-[background-color,color] duration-200 ease-out sm:text-sm",
                       isActive
                         ? "bg-white/12 text-white"
                         : "text-white/60 hover:bg-white/[0.06] hover:text-white",
@@ -81,8 +81,8 @@ export function DashboardShell({
             </nav>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="hidden text-right md:block">
               <p className="text-sm font-medium leading-tight text-white">{user.full_name}</p>
               <p className="text-xs text-white/50">{user.email}</p>
             </div>
@@ -107,7 +107,7 @@ export function DashboardShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-6xl space-y-5 px-4 py-6 sm:space-y-6 sm:px-6 sm:py-8 lg:px-8">
         {title ? (
           <div className="space-y-1">
             <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">

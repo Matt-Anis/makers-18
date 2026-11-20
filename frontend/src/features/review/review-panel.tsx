@@ -218,17 +218,17 @@ export function ReviewPanel({
           <h3 className="text-xs font-medium text-white/65">
             Detected findings ({activeFindings.length} active)
           </h3>
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
             {findings.map((f) => (
               <div
                 key={f.id}
-                className={`flex items-center justify-between gap-2 rounded-2xl border px-3.5 py-2.5 text-xs transition-colors duration-200 ${
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3.5 py-2.5 text-xs transition-colors duration-200 sm:flex-nowrap ${
                   f.status === "dismissed"
                     ? "border-white/[0.06] bg-white/[0.02] opacity-45 line-through"
                     : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
                 }`}
               >
-                <div className="min-w-0 truncate">
+                <div className="min-w-0 flex-1 truncate">
                   <span className="font-medium text-white">{f.text}</span>
                   <span className="ml-2 font-mono text-[11px] text-[#b8a5ff]">
                     → {f.placeholder}
@@ -272,7 +272,7 @@ export function ReviewPanel({
           <span className="text-xs font-medium text-[#b8a5ff]">
             Masked preview (outgoing payload)
           </span>
-          <p className="font-mono text-xs leading-relaxed text-white/80">
+          <p className="break-words font-mono text-xs leading-relaxed text-white/80">
             {buildMaskedText(reviewText, findings)}
           </p>
         </div>
@@ -282,7 +282,7 @@ export function ReviewPanel({
             type="button"
             disabled={sending}
             onClick={onApproveAndSend}
-            className="h-10 cursor-pointer bg-white px-5 text-sm font-semibold text-zinc-950 hover:bg-white/90"
+            className="h-10 w-full cursor-pointer bg-white px-5 text-sm font-semibold text-zinc-950 hover:bg-white/90 sm:w-auto"
           >
             {sending ? "Sending masked payload..." : "Approve & send masked"}
           </Button>

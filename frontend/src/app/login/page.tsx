@@ -53,7 +53,7 @@ export default function SignInPage() {
     <main className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 py-12 text-white">
       <NyxoraWordmark href="/" className="mb-8 text-2xl sm:text-3xl" />
 
-      <Card className="nyxora-surface w-full max-w-md gap-6 rounded-3xl border p-7 ring-0 sm:p-8">
+      <Card className="nyxora-surface w-full max-w-md gap-6 rounded-3xl border p-6 ring-0 sm:p-8">
         <CardHeader className="p-0 text-center">
           <CardTitle id="signin-heading" className="text-xl font-semibold text-white sm:text-2xl">
             Sign in

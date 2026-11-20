@@ -13,10 +13,10 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 @router.get("", response_model=list[AuditLogOut])
 def list_audit_logs(
     limit: int = Query(default=50, ge=1, le=200),
-    _admin: User = Depends(require_roles(UserRole.ADMIN)),
+    _owner: User = Depends(require_roles(UserRole.OWNER)),
     db: Session = Depends(get_db),
 ) -> list[AuditLog]:
-    """Return recent metadata-only audit log entries (admin only)."""
+    """Return recent metadata-only audit log entries (owner only)."""
     return list(
         db.scalars(
             select(AuditLog)
