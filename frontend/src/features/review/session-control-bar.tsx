@@ -12,12 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PROVIDERS } from "@/features/review/types";
-import { GatewaySession } from "@/lib/api";
+import { DiscoveredModel, GatewaySession } from "@/lib/api";
 
 interface SessionControlBarProps {
-  provider: string;
-  onProviderChange: (providerId: string) => void;
+  models: DiscoveredModel[];
+  selectedModelKey: string;
+  onSelectModelKey: (key: string) => void;
+  thinkingEffort: "low" | "medium" | "high";
+  onThinkingEffortChange: (effort: "low" | "medium" | "high") => void;
+  reviewMode: "manual" | "auto";
+  allowAutoReview: boolean;
+  onReviewModeChange: (mode: "manual" | "auto") => void;
   sessions: GatewaySession[];
   activeSession: GatewaySession | null;
   onSelectSession: (sessionId: string) => void;
@@ -28,9 +33,19 @@ interface SessionControlBarProps {
   busy: boolean;
 }
 
+export function modelOptionKey(model: DiscoveredModel): string {
+  return `${model.provider}::${model.model_id}`;
+}
+
 export function SessionControlBar({
-  provider,
-  onProviderChange,
+  models,
+  selectedModelKey,
+  onSelectModelKey,
+  thinkingEffort,
+  onThinkingEffortChange,
+  reviewMode,
+  allowAutoReview,
+  onReviewModeChange,
   sessions,
   activeSession,
   onSelectSession,
@@ -40,32 +55,95 @@ export function SessionControlBar({
   onToggleShowMasked,
   busy,
 }: SessionControlBarProps) {
+  const currentModel = models.find((m) => modelOptionKey(m) === selectedModelKey) ?? models[0];
+
   return (
     <Card className="nyxora-surface rounded-3xl border ring-0">
       <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3.5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <Label htmlFor="provider-select" className="text-xs font-medium text-white/60">
+            <Label htmlFor="model-select" className="text-xs font-medium text-white/60">
               Model
             </Label>
             <Select
-              value={provider}
+              value={selectedModelKey}
               onValueChange={(value) => {
-                if (value) onProviderChange(value);
+                if (value) onSelectModelKey(value);
               }}
             >
               <SelectTrigger
-                id="provider-select"
+                id="model-select"
                 className="h-9 min-w-52 rounded-full px-3.5 text-xs text-white sm:text-sm"
               >
-                <SelectValue placeholder="Choose provider" />
+                <SelectValue placeholder="No models enabled" />
               </SelectTrigger>
               <SelectContent>
-                {PROVIDERS.map((item) => (
-                  <SelectItem key={item.id} value={item.id} className="rounded-xl">
-                    {item.label}
+                {models.map((item) => {
+                  const key = modelOptionKey(item);
+                  return (
+                    <SelectItem key={key} value={key} className="rounded-xl">
+                      {item.display_name} ({item.provider_label})
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {currentModel?.supports_thinking ? (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="thinking-select" className="text-xs font-medium text-white/60">
+                Thinking
+              </Label>
+              <Select
+                value={thinkingEffort}
+                onValueChange={(value) => {
+                  if (value) onThinkingEffortChange(value as "low" | "medium" | "high");
+                }}
+              >
+                <SelectTrigger
+                  id="thinking-select"
+                  className="h-9 min-w-28 rounded-full px-3 text-xs capitalize text-white"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {currentModel.thinking_efforts.map((effort) => (
+                    <SelectItem key={effort} value={effort} className="rounded-xl capitalize">
+                      {effort}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-2">
+            <Label htmlFor="mode-select" className="text-xs font-medium text-white/60">
+              Mode
+            </Label>
+            <Select
+              value={reviewMode}
+              disabled={!allowAutoReview}
+              onValueChange={(value) => {
+                if (value) onReviewModeChange(value as "manual" | "auto");
+              }}
+            >
+              <SelectTrigger
+                id="mode-select"
+                className="h-9 min-w-36 rounded-full px-3 text-xs text-white"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual" className="rounded-xl">
+                  Manual approval
+                </SelectItem>
+                {allowAutoReview ? (
+                  <SelectItem value="auto" className="rounded-xl">
+                    Auto review
                   </SelectItem>
-                ))}
+                ) : null}
               </SelectContent>
             </Select>
           </div>

@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/chat", label: "Workspace" },
-  { href: "/rules", label: "Rules & Audit", adminOnly: true },
-  { href: "/metrics", label: "Metrics" },
+  { href: "/rules", label: "Owner Settings", ownerOnly: true },
+  { href: "/metrics", label: "Metrics", ownerOnly: true },
 ] as const;
 
 export function DashboardShell({
@@ -49,7 +49,7 @@ export function DashboardShell({
   }
 
   const visibleNav = NAV_ITEMS.filter(
-    (item) => !("adminOnly" in item && item.adminOnly) || user.role === "admin",
+    (item) => !("ownerOnly" in item && item.ownerOnly) || user.role === "owner",
   );
 
   return (

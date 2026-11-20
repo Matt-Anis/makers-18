@@ -12,22 +12,43 @@ import {
   simulateMaskedProvider,
 } from "@/features/review/mock-pipeline";
 import { ReviewPanel } from "@/features/review/review-panel";
-import { SessionControlBar } from "@/features/review/session-control-bar";
+import { modelOptionKey, SessionControlBar } from "@/features/review/session-control-bar";
 import {
   ChatMessage,
   EntityType,
   Finding,
-  PROVIDERS,
   SAMPLE_CONTRACT,
 } from "@/features/review/types";
-import { ApiError, apiFetch, GatewaySession } from "@/lib/api";
+import {
+  ApiError,
+  apiFetch,
+  DiscoveredModel,
+  GatewaySession,
+  ModelDiscoveryResponse,
+} from "@/lib/api";
+
+const FALLBACK_MODEL: DiscoveredModel = {
+  provider: "mock",
+  provider_label: "Local Mock Provider",
+  model_id: "nyxora-mock-v1",
+  display_name: "NYXORA Mock Model",
+  supports_thinking: true,
+  thinking_efforts: ["low", "medium", "high"],
+};
 
 export function SessionWorkspace() {
   const { user } = useAuth();
 
+  const [models, setModels] = useState<DiscoveredModel[]>([FALLBACK_MODEL]);
+  const [selectedModelKey, setSelectedModelKey] = useState<string>(
+    modelOptionKey(FALLBACK_MODEL),
+  );
+  const [thinkingEffort, setThinkingEffort] = useState<"low" | "medium" | "high">("medium");
+  const [allowAutoReview, setAllowAutoReview] = useState(true);
+  const [reviewMode, setReviewMode] = useState<"manual" | "auto">("manual");
+
   const [sessions, setSessions] = useState<GatewaySession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [provider, setProvider] = useState<string>(PROVIDERS[0].id);
   const [busy, setBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -46,9 +67,9 @@ export function SessionWorkspace() {
     [sessions, activeSessionId],
   );
 
-  const providerLabel = useMemo(
-    () => PROVIDERS.find((p) => p.id === provider)?.label ?? provider,
-    [provider],
+  const selectedModel = useMemo(
+    () => models.find((m) => modelOptionKey(m) === selectedModelKey) ?? models[0] ?? FALLBACK_MODEL,
+    [models, selectedModelKey],
   );
 
   const refreshSessions = useCallback(async () => {
@@ -63,14 +84,30 @@ export function SessionWorkspace() {
   useEffect(() => {
     if (!user) return;
     let active = true;
-    apiFetch<GatewaySession[]>("/sessions")
-      .then((owned) => {
+    Promise.all([
+      apiFetch<GatewaySession[]>("/sessions"),
+      apiFetch<ModelDiscoveryResponse>("/providers/models"),
+    ])
+      .then(([owned, discovery]) => {
         if (!active) return;
         setSessions(owned);
         setActiveSessionId(owned[0]?.id ?? null);
+
+        if (discovery.models.length > 0) {
+          setModels(discovery.models);
+          const defaultKey =
+            discovery.default_provider && discovery.default_model
+              ? `${discovery.default_provider}::${discovery.default_model}`
+              : modelOptionKey(discovery.models[0]);
+          const exists = discovery.models.some((m) => modelOptionKey(m) === defaultKey);
+          setSelectedModelKey(exists ? defaultKey : modelOptionKey(discovery.models[0]));
+        }
+        setAllowAutoReview(discovery.allow_auto_review);
+        setReviewMode(discovery.default_review_mode);
+        setThinkingEffort(discovery.default_thinking_effort);
       })
       .catch(() => {
-        if (active) setStatusMessage("Could not load sessions.");
+        if (active) setStatusMessage("Could not load sessions or models.");
       });
     return () => {
       active = false;
@@ -84,7 +121,7 @@ export function SessionWorkspace() {
         method: "POST",
         body: JSON.stringify({
           title: fileName ?? "Contract review",
-          provider,
+          provider: selectedModel.provider,
         }),
       });
       await refreshSessions();
@@ -94,7 +131,7 @@ export function SessionWorkspace() {
       setStatusMessage(error instanceof ApiError ? error.message : "Could not start session.");
       return null;
     }
-  }, [activeSession, fileName, provider, refreshSessions]);
+  }, [activeSession, fileName, selectedModel.provider, refreshSessions]);
 
   async function handleNewSession() {
     setBusy(true);
@@ -104,7 +141,7 @@ export function SessionWorkspace() {
         method: "POST",
         body: JSON.stringify({
           title: `Review ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
-          provider,
+          provider: selectedModel.provider,
         }),
       });
       await refreshSessions();
@@ -148,7 +185,7 @@ export function SessionWorkspace() {
     setStep("sending");
     setTimeout(() => {
       const { assistantUnmasked, assistantMasked } = simulateMaskedProvider(
-        providerLabel,
+        selectedModel.display_name,
         unmasked,
         masked,
       );
@@ -192,6 +229,9 @@ export function SessionWorkspace() {
       setFindings([]);
       setStep("clean");
       dispatchToProvider(text, text);
+    } else if (reviewMode === "auto" && allowAutoReview) {
+      const masked = buildMaskedText(text, detected);
+      dispatchToProvider(text, masked);
     } else {
       setFindings(detected);
       setStep("needs_review");
@@ -252,7 +292,7 @@ export function SessionWorkspace() {
         aria-live="polite"
         className={
           statusMessage
-            ? "rounded-xl border border-[#9b72eb]/45 bg-[#6441A5]/20 px-4 py-2.5 text-sm text-white"
+            ? "rounded-2xl border border-[#9b82ff]/40 bg-[#7c5cff]/15 px-4 py-2.5 text-sm text-white"
             : "sr-only"
         }
       >
@@ -260,8 +300,14 @@ export function SessionWorkspace() {
       </div>
 
       <SessionControlBar
-        provider={provider}
-        onProviderChange={setProvider}
+        models={models}
+        selectedModelKey={selectedModelKey}
+        onSelectModelKey={setSelectedModelKey}
+        thinkingEffort={thinkingEffort}
+        onThinkingEffortChange={setThinkingEffort}
+        reviewMode={reviewMode}
+        allowAutoReview={allowAutoReview}
+        onReviewModeChange={setReviewMode}
         sessions={sessions}
         activeSession={activeSession}
         onSelectSession={(id) => {
@@ -306,7 +352,7 @@ export function SessionWorkspace() {
       <ConversationThread
         messages={messages}
         showMasked={showMasked}
-        providerLabel={providerLabel}
+        providerLabel={selectedModel.display_name}
       />
     </DashboardShell>
   );

@@ -1,4 +1,4 @@
-export type UserRole = "requester" | "reviewer" | "admin";
+export type UserRole = "owner" | "user";
 
 export interface User {
   id: string;
@@ -40,6 +40,65 @@ export interface AuditLogEntry {
   provider: string | null;
   approved: boolean | null;
   entity_counts: Record<string, number> | null;
+  created_at: string;
+}
+
+export interface ProviderConfigOut {
+  provider: string;
+  label: string;
+  requires_api_key: boolean;
+  is_configured: boolean;
+  key_hint: string | null;
+  base_url: string | null;
+  enabled: boolean;
+  enabled_models: string[];
+  updated_at: string | null;
+}
+
+export interface DiscoveredModel {
+  provider: string;
+  provider_label: string;
+  model_id: string;
+  display_name: string;
+  supports_thinking: boolean;
+  thinking_efforts: string[];
+}
+
+export interface ProviderDiscoveryResult {
+  provider: string;
+  source: "live" | "fallback";
+  models: DiscoveredModel[];
+}
+
+export interface ModelDiscoveryResponse {
+  models: DiscoveredModel[];
+  allow_auto_review: boolean;
+  default_review_mode: "manual" | "auto";
+  default_provider: string | NoneOrString;
+  default_model: string | NoneOrString;
+  default_thinking_effort: "low" | "medium" | "high";
+}
+
+type NoneOrString = null;
+
+export interface WorkspaceSettings {
+  allow_auto_review: boolean;
+  default_review_mode: "manual" | "auto";
+  default_provider: string | null;
+  default_model: string | null;
+  default_thinking_effort: "low" | "medium" | "high";
+  rulebook_prompt: string;
+  gpu_llm_enabled: boolean;
+  gpu_llm_endpoint: string | null;
+  updated_at: string;
+}
+
+export interface CustomRule {
+  id: string;
+  pattern: string;
+  entity_type: string;
+  is_regex: boolean;
+  enabled: boolean;
   created_at: string;
 }
 
