@@ -1,5 +1,7 @@
 # Issue-driven development
 
+> **Project context:** Before proposing issues or implementing changes, read [docs/ROADMAP.md](docs/ROADMAP.md) for product context, privacy invariants, locked architecture decisions, and the current build order.
+
 ## Hackathon pace
 
 Choose the simplest implementation that reliably delivers the issue’s outcome. Verify the main flow and cover likely failures that could break the demo, lose data, or block a teammate. Defer optional polish, extra abstractions, and unlikely edge cases. Open a follow-up issue if the team needs to revisit a shortcut.
