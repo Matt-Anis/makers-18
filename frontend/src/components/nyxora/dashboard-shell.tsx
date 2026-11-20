@@ -42,7 +42,7 @@ export function DashboardShell({
 
   if (loading || !user) {
     return (
-      <main className="nyxora-workspace-bg flex min-h-screen items-center justify-center p-8 text-white/70">
+      <main className="nyxora-animated-bg flex min-h-screen items-center justify-center p-8 text-white/70">
         <p className="text-sm tracking-wide">Verifying workspace session...</p>
       </main>
     );
@@ -53,7 +53,7 @@ export function DashboardShell({
   );
 
   return (
-    <div className="nyxora-workspace-bg min-h-screen text-white">
+    <div className="nyxora-animated-bg min-h-screen text-white">
       <header className="sticky top-0 z-40 border-b border-[#6441A5]/35 bg-black/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <div className="flex flex-wrap items-center gap-5">

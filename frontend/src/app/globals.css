@@ -49,13 +49,6 @@
   animation: nyxoraCardinalMove 10s ease-in-out infinite;
 }
 
-.nyxora-workspace-bg {
-  background:
-    radial-gradient(circle at 15% 0%, rgba(100, 65, 165, 0.22) 0%, transparent 45%),
-    radial-gradient(circle at 85% 15%, rgba(45, 27, 84, 0.32) 0%, transparent 40%),
-    #0d0817;
-}
-
 .nyxora-glass {
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(20px);
