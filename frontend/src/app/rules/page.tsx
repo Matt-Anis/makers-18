@@ -55,6 +55,8 @@ export default function OwnerSettingsPage() {
   >({});
 
   const [ws, setWs] = useState<WorkspaceSettings | null>(null);
+  const [gpuKeyDraft, setGpuKeyDraft] = useState("");
+  const [clearGpuKey, setClearGpuKey] = useState(false);
   const [rules, setRules] = useState<CustomRule[]>([]);
   const [pattern, setPattern] = useState("");
   const [entityType, setEntityType] = useState<EntityType>("CUSTOM");
@@ -178,9 +180,23 @@ export default function OwnerSettingsPage() {
     try {
       const saved = await apiFetch<WorkspaceSettings>("/settings/workspace", {
         method: "PUT",
-        body: JSON.stringify(ws),
+        body: JSON.stringify({
+          allow_auto_review: ws.allow_auto_review,
+          default_review_mode: ws.default_review_mode,
+          default_provider: ws.default_provider,
+          default_model: ws.default_model,
+          default_thinking_effort: ws.default_thinking_effort,
+          rulebook_prompt: ws.rulebook_prompt,
+          gpu_llm_enabled: ws.gpu_llm_enabled,
+          gpu_llm_endpoint: ws.gpu_llm_endpoint,
+          gpu_llm_model: ws.gpu_llm_model,
+          gpu_llm_api_key: gpuKeyDraft.trim() ? gpuKeyDraft.trim() : null,
+          clear_gpu_llm_api_key: clearGpuKey,
+        }),
       });
       setWs(saved);
+      setGpuKeyDraft("");
+      setClearGpuKey(false);
       setStatusMessage("Saved workspace defaults & rulebook settings.");
     } catch (error) {
       setStatusMessage(error instanceof ApiError ? error.message : "Could not save settings.");
@@ -522,16 +538,66 @@ export default function OwnerSettingsPage() {
                     </div>
 
                     {ws.gpu_llm_enabled ? (
-                      <div className="space-y-1.5">
-                        <Label htmlFor="gpu-endpoint" className="text-xs text-white/75">
-                          GPU Server OpenAI-compatible Endpoint
-                        </Label>
-                        <Input
-                          id="gpu-endpoint"
-                          value={ws.gpu_llm_endpoint ?? ""}
-                          onChange={(e) => setWs({ ...ws, gpu_llm_endpoint: e.target.value })}
-                          placeholder="http://gpu-server:8001/v1"
-                        />
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <Label htmlFor="gpu-endpoint" className="text-xs text-white/75">
+                            GPU Server OpenAI-compatible Endpoint (vLLM / RunPod / Ollama)
+                          </Label>
+                          <Input
+                            id="gpu-endpoint"
+                            value={ws.gpu_llm_endpoint ?? ""}
+                            onChange={(e) => setWs({ ...ws, gpu_llm_endpoint: e.target.value })}
+                            placeholder="https://<pod-id>-8000.proxy.runpod.net/v1"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="gpu-model" className="text-xs text-white/75">
+                            SLM Model ID
+                          </Label>
+                          <Input
+                            id="gpu-model"
+                            value={ws.gpu_llm_model ?? ""}
+                            onChange={(e) => setWs({ ...ws, gpu_llm_model: e.target.value })}
+                            placeholder="Qwen/Qwen2.5-7B-Instruct-AWQ"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="gpu-api-key" className="text-xs text-white/75">
+                              Optional Bearer API Key{" "}
+                              {ws.gpu_llm_key_hint ? (
+                                <span className="font-mono text-[#b8a5ff]">
+                                  ({ws.gpu_llm_key_hint})
+                                </span>
+                              ) : null}
+                            </Label>
+                            {ws.gpu_llm_key_configured ? (
+                              <button
+                                type="button"
+                                onClick={() => setClearGpuKey((prev) => !prev)}
+                                className="cursor-pointer text-[11px] text-red-300 hover:text-red-200"
+                              >
+                                {clearGpuKey ? "Keep existing key" : "Clear stored key"}
+                              </button>
+                            ) : null}
+                          </div>
+                          <Input
+                            id="gpu-api-key"
+                            type="password"
+                            value={gpuKeyDraft}
+                            onChange={(e) => {
+                              setGpuKeyDraft(e.target.value);
+                              if (e.target.value) setClearGpuKey(false);
+                            }}
+                            placeholder={
+                              ws.gpu_llm_key_configured
+                                ? "Enter new key to rotate (leave blank to keep)"
+                                : "Optional token for protected vLLM endpoints"
+                            }
+                          />
+                        </div>
                       </div>
                     ) : null}
 

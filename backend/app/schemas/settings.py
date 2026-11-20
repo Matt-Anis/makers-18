@@ -95,8 +95,11 @@ class WorkspaceSettingsUpdate(BaseModel):
     rulebook_prompt: str = Field(default="", max_length=8000)
     gpu_llm_enabled: bool = False
     gpu_llm_endpoint: str | None = Field(default=None, max_length=255)
+    gpu_llm_model: str | None = Field(default=None, max_length=128)
+    gpu_llm_api_key: str | None = Field(default=None, max_length=512)
+    clear_gpu_llm_api_key: bool = False
 
-    @field_validator("gpu_llm_endpoint")
+    @field_validator("gpu_llm_endpoint", "gpu_llm_model")
     @classmethod
     def clean_endpoint(cls, value: str | None) -> str | None:
         if value is None:
@@ -118,6 +121,9 @@ class WorkspaceSettingsOut(BaseModel):
     rulebook_prompt: str
     gpu_llm_enabled: bool
     gpu_llm_endpoint: str | None
+    gpu_llm_model: str | None = None
+    gpu_llm_key_configured: bool = False
+    gpu_llm_key_hint: str | None = None
     updated_at: datetime
 
 

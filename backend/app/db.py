@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -51,3 +51,24 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def ensure_schema_migrations(target_engine: Engine) -> None:
+    """Apply lightweight idempotent column migrations for existing SQLite volumes."""
+    inspector = inspect(target_engine)
+    if not inspector.has_table("workspace_settings"):
+        return
+
+    existing_columns = {col["name"] for col in inspector.get_columns("workspace_settings")}
+    additions = [
+        ("gpu_llm_model", "VARCHAR(128) DEFAULT 'Qwen/Qwen2.5-7B-Instruct-AWQ'"),
+        ("encrypted_gpu_llm_api_key", "TEXT"),
+        ("gpu_llm_key_hint", "VARCHAR(32)"),
+    ]
+    missing = [(name, ddl) for name, ddl in additions if name not in existing_columns]
+    if not missing:
+        return
+
+    with target_engine.begin() as conn:
+        for name, ddl in missing:
+            conn.execute(text(f"ALTER TABLE workspace_settings ADD COLUMN {name} {ddl}"))

@@ -217,6 +217,11 @@ class WorkspaceSettings(Base):
     rulebook_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
     gpu_llm_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     gpu_llm_endpoint: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    gpu_llm_model: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, default="Qwen/Qwen2.5-7B-Instruct-AWQ"
+    )
+    encrypted_gpu_llm_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gpu_llm_key_hint: Mapped[str | None] = mapped_column(String(32), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 

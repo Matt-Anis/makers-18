@@ -1,5 +1,8 @@
 from dataclasses import dataclass
+import json
 import re
+
+import httpx
 
 from app.detection.pipeline import (
     apply_mask,
@@ -7,7 +10,11 @@ from app.detection.pipeline import (
     detect_sensitive_entities,
 )
 from app.detection.presidio_detector import PresidioDetector, get_presidio_detector
-from app.detection.slm_client import OpenAICompatibleSLMDetector, should_skip_slm
+from app.detection.slm_client import (
+    OpenAICompatibleSLMDetector,
+    chunk_text_for_slm,
+    should_skip_slm,
+)
 from app.models import CustomRule
 from app.vault.store import VaultData
 
@@ -47,40 +54,88 @@ def test_detection_pipeline_vault_consistency_and_custom_rules() -> None:
     assert vault.unmask_text(masked2) == msg2
 
 
-def test_slm_short_circuit_and_verbatim_matching(monkeypatch) -> None:
+def test_slm_short_circuit_premask_chunking_and_auth() -> None:
     assert should_skip_slm("Summarize the termination obligations please.") is True
+    assert should_skip_slm("What did [PERSON_7f3a9b] agree to?") is True
     assert should_skip_slm("Summarize clause 4 please.") is False
     assert should_skip_slm("What did Karim Benali agree to?") is False
 
-    class _FakeResp:
-        def raise_for_status(self) -> None:
-            return None
+    seen_requests: list[dict] = []
 
-        def json(self) -> dict:
-            return {
-                "choices": [
-                    {
-                        "message": {
-                            "content": '{"leftovers": [{"text": "Orion Labs", "type": "COMPANY"}, {"text": "HALLUCINATED", "type": "CUSTOM"}]}'
-                        }
-                    }
-                ]
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content.decode("utf-8"))
+        seen_requests.append(
+            {
+                "url": str(request.url),
+                "auth": request.headers.get("authorization"),
+                "model": body["model"],
+                "content": body["messages"][1]["content"],
             }
+        )
+        leftovers = []
+        if "sonatrach" in body["messages"][1]["content"]:
+            leftovers.append({"text": "sonatrach", "type": "COMPANY"})
+        if "zenith-9" in body["messages"][1]["content"]:
+            leftovers.append({"text": "zenith-9", "type": "CUSTOM"})
+        leftovers.append({"text": "HALLUCINATED", "type": "CUSTOM"})
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": json.dumps({"leftovers": leftovers})}}]},
+        )
 
-    import app.detection.slm_client as slm_mod
-
-    monkeypatch.setattr(slm_mod.httpx, "post", lambda *_a, **_kw: _FakeResp())
-    detector = OpenAICompatibleSLMDetector("http://gpu-server:8001/v1")
-    text = (
-        "This confidential memorandum summarizes ongoing negotiations between Orion Labs "
-        "and external counsel regarding quarterly licensing terms across multiple regions."
+    transport = httpx.MockTransport(handler)
+    detector = OpenAICompatibleSLMDetector(
+        "http://gpu-server:8001/v1",
+        model="Qwen/Qwen2.5-3B-Instruct-AWQ",
+        api_key="rp-secret-token-42",
+        max_concurrency=8,
+        max_chunk_words=55,
+        overlap_words=10,
+        transport=transport,
     )
-    spans = detector.detect(text)
-    assert len(spans) == 1
-    start, end, entity_type, source, _conf = spans[0]
-    assert text[start:end] == "Orion Labs"
-    assert entity_type == "COMPANY"
-    assert source == "llm"
+
+    # 1) Pre-masked pipeline check: Layer 1 masks email/person before SLM ever sees the text.
+    contract = (
+        "Confidential memorandum from Karim Benali (karim.benali@atlastech.dz) detailing licensing "
+        "obligations for sonatrach and external counsel regarding regional distribution rights "
+        "across multiple jurisdictions for codename zenith-9."
+    )
+    findings = detect_sensitive_entities(
+        contract,
+        vault=VaultData(),
+        custom_rules=[],
+        extra_detectors=[detector],
+    )
+    assert len(seen_requests) == 1
+    assert seen_requests[0]["auth"] == "Bearer rp-secret-token-42"
+    assert seen_requests[0]["model"] == "Qwen/Qwen2.5-3B-Instruct-AWQ"
+    assert "Karim Benali" not in seen_requests[0]["content"]
+    assert "karim.benali@atlastech.dz" not in seen_requests[0]["content"]
+    assert re.search(r"\[EMAIL_[0-9a-f]{6}\]", seen_requests[0]["content"])
+    assert re.search(r"\[PERSON_[0-9a-f]{6}\]", seen_requests[0]["content"])
+
+    by_text = {f.text: f for f in findings}
+    assert by_text["karim.benali@atlastech.dz"].type == "EMAIL"
+    assert by_text["sonatrach"].type == "COMPANY"
+    assert by_text["sonatrach"].source == "llm"
+    assert by_text["zenith-9"].type == "CUSTOM"
+    assert by_text["zenith-9"].source == "llm"
+    assert "HALLUCINATED" not in by_text
+
+    # 2) Long text splits into multiple overlapping chunks dispatched concurrently and deduplicated.
+    seen_requests.clear()
+    filler = " ".join(["obligations", "clause", "schedule", "indemnity", "payment"] * 18)
+    long_doc = (
+        f"Part one discusses sonatrach terms. {filler}. "
+        f"Part two introduces zenith-9 deliverables. {filler}."
+    )
+    chunks = chunk_text_for_slm(long_doc, max_words=55, overlap_words=10)
+    assert len(chunks) >= 3
+
+    long_spans = detector.detect_post_mask(long_doc, long_doc)
+    assert len(seen_requests) == len(chunks)
+    extracted_texts = {long_doc[s:e] for s, e, _t, _src, _c in long_spans}
+    assert extracted_texts == {"sonatrach", "zenith-9"}
 
 
 def test_presidio_detector_mapping_filtering_and_fallback(monkeypatch) -> None:

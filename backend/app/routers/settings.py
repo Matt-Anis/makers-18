@@ -138,13 +138,30 @@ def _get_or_create_workspace_settings(db: Session) -> WorkspaceSettings:
     return settings_row
 
 
+def _serialize_workspace_settings(row: WorkspaceSettings) -> WorkspaceSettingsOut:
+    return WorkspaceSettingsOut(
+        allow_auto_review=row.allow_auto_review,
+        default_review_mode=row.default_review_mode,  # type: ignore[arg-type]
+        default_provider=row.default_provider,
+        default_model=row.default_model,
+        default_thinking_effort=row.default_thinking_effort,  # type: ignore[arg-type]
+        rulebook_prompt=row.rulebook_prompt,
+        gpu_llm_enabled=row.gpu_llm_enabled,
+        gpu_llm_endpoint=row.gpu_llm_endpoint,
+        gpu_llm_model=row.gpu_llm_model,
+        gpu_llm_key_configured=bool(row.encrypted_gpu_llm_api_key),
+        gpu_llm_key_hint=row.gpu_llm_key_hint,
+        updated_at=row.updated_at,
+    )
+
+
 @router.get("/workspace", response_model=WorkspaceSettingsOut)
 def get_workspace_settings(
     _owner: User = Depends(require_roles(UserRole.OWNER)),
     db: Session = Depends(get_db),
-) -> WorkspaceSettings:
+) -> WorkspaceSettingsOut:
     """Return review mode defaults and rulebook settings (owner only)."""
-    return _get_or_create_workspace_settings(db)
+    return _serialize_workspace_settings(_get_or_create_workspace_settings(db))
 
 
 @router.put("/workspace", response_model=WorkspaceSettingsOut)
@@ -152,7 +169,7 @@ def update_workspace_settings(
     payload: WorkspaceSettingsUpdate,
     owner: User = Depends(require_roles(UserRole.OWNER)),
     db: Session = Depends(get_db),
-) -> WorkspaceSettings:
+) -> WorkspaceSettingsOut:
     """Update workspace review defaults, thinking effort, and rulebook prompt (owner only)."""
     if not payload.allow_auto_review and payload.default_review_mode == "auto":
         raise HTTPException(
@@ -169,9 +186,19 @@ def update_workspace_settings(
     settings_row.rulebook_prompt = payload.rulebook_prompt
     settings_row.gpu_llm_enabled = payload.gpu_llm_enabled
     settings_row.gpu_llm_endpoint = payload.gpu_llm_endpoint
+    settings_row.gpu_llm_model = payload.gpu_llm_model or "Qwen/Qwen2.5-7B-Instruct-AWQ"
+
+    if payload.clear_gpu_llm_api_key:
+        settings_row.encrypted_gpu_llm_api_key = None
+        settings_row.gpu_llm_key_hint = None
+    elif payload.gpu_llm_api_key is not None and payload.gpu_llm_api_key.strip():
+        cleaned_key = payload.gpu_llm_api_key.strip()
+        settings_row.encrypted_gpu_llm_api_key = encrypt_secret(cleaned_key, get_secret_fernet())
+        settings_row.gpu_llm_key_hint = mask_api_key(cleaned_key)
+
     settings_row.updated_at = utcnow()
 
     db.add(AuditLog(user_id=owner.id, action="settings.workspace_updated"))
     db.commit()
     db.refresh(settings_row)
-    return settings_row
+    return _serialize_workspace_settings(settings_row)

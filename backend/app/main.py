@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config import get_settings
-from app.db import Base, SessionLocal, engine
+from app.db import Base, SessionLocal, engine, ensure_schema_migrations
 from app.routers.audit import router as audit_router
 from app.routers.auth import router as auth_router
 from app.routers.providers import router as providers_router
@@ -21,6 +21,7 @@ from app.seed import (
 async def lifespan(_app: FastAPI):
     """Initialize relational tables and optionally seed demo accounts on startup."""
     Base.metadata.create_all(bind=engine)
+    ensure_schema_migrations(engine)
     settings = get_settings()
     with SessionLocal() as db:
         normalize_legacy_roles(db)
