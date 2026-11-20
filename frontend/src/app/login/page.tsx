@@ -1,9 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import localFont from "next/font/local";
 import { useAuth } from "@/components/auth-provider";
 import { ApiError } from "@/lib/api";
+
+const duneRise = localFont({
+  src: "../../../dune_rise/Dune_Rise.ttf",
+  display: "swap",
+});
 
 const DEMO_ACCOUNTS = [
   { label: "Requester (Anis)", email: "requester@acme.local", password: "demo-requester-pass" },
@@ -13,7 +20,7 @@ const DEMO_ACCOUNTS = [
 
 const SHOW_DEMO_QUICKFILL = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
-export default function LoginPage() {
+export default function SignInPage() {
   const router = useRouter();
   const { user, loading, signIn } = useAuth();
   const emailRef = useRef<HTMLInputElement>(null);
@@ -26,7 +33,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/");
+      router.replace("/chat");
     }
   }, [loading, user, router]);
 
@@ -37,7 +44,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      router.replace("/");
+      router.replace("/chat");
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
@@ -51,39 +58,46 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-900">
-      <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-          Contract Privacy Gateway
-        </p>
-        <h1 id="signin-heading" className="mt-1 text-2xl font-semibold text-slate-900">
-          Sign in to your workspace
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Access is restricted to provisioned company accounts. Each review session keeps its
-          encrypted redaction vault isolated to your account.
-        </p>
+    <main className="nyxora-animated-bg relative min-h-screen w-full flex flex-col items-center justify-center px-4 py-12 text-white overflow-hidden">
+      {/* Logo NYXORA -> retour vers Landing Page */}
+      <Link
+        href="/"
+        className={`${duneRise.className} text-2xl sm:text-3xl tracking-[0.25em] uppercase mb-8 drop-shadow-[0_0_20px_rgba(100,65,165,0.6)] hover:opacity-90 transition-opacity`}
+      >
+        NYXORA
+      </Link>
 
-        <form
-          onSubmit={handleSubmit}
-          aria-labelledby="signin-heading"
-          className="mt-6 space-y-5"
-        >
+      {/* Carte Glassmorphism Sign In */}
+      <div className="w-full max-w-md rounded-2xl bg-black/55 backdrop-blur-xl border border-[#6441A5]/45 p-7 sm:p-8 shadow-[0_0_55px_rgba(100,65,165,0.32)]">
+        <div className="text-center mb-7">
+          <h1 id="signin-heading" className="text-xl sm:text-2xl font-bold tracking-[0.15em] uppercase">
+            Sign In
+          </h1>
+          <p className="text-xs sm:text-sm text-white/60 mt-1.5 tracking-wide">
+            Access your private contract workspace
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} aria-labelledby="signin-heading" className="space-y-5">
           <div
             role="status"
             aria-live="polite"
             className={
               errorMessage
-                ? "rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+                ? "rounded-xl border border-red-400/50 bg-red-950/60 px-4 py-2.5 text-xs sm:text-sm text-red-200"
                 : "sr-only"
             }
           >
             {errorMessage ?? ""}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="text-sm font-medium text-slate-800">
-              Work email
+          {/* Email */}
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-xs font-semibold uppercase tracking-[0.15em] text-white/80 mb-2"
+            >
+              Email
             </label>
             <input
               ref={emailRef}
@@ -97,61 +111,69 @@ export default function LoginPage() {
               required
               aria-invalid={Boolean(errorMessage)}
               value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
+              onChange={(e) => {
+                setEmail(e.target.value);
                 if (errorMessage) setErrorMessage(null);
               }}
-              className="min-h-12 w-full rounded-lg border border-slate-400 bg-white px-3 text-base text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+              placeholder="you@company.com"
+              className="w-full min-h-12 rounded-xl bg-white/5 border border-white/15 px-4 py-3 text-base text-white placeholder-white/35 focus:outline-none focus:border-[#9b72eb] focus:ring-1 focus:ring-[#9b72eb] transition-all"
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-sm font-medium text-slate-800">
-              Password
-            </label>
-            <div className="flex items-stretch gap-2">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                enterKeyHint="done"
-                required
-                aria-invalid={Boolean(errorMessage)}
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  if (errorMessage) setErrorMessage(null);
-                }}
-                className="min-h-12 w-full rounded-lg border border-slate-400 bg-white px-3 text-base text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-              />
+          {/* Password */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label
+                htmlFor="password"
+                className="block text-xs font-semibold uppercase tracking-[0.15em] text-white/80"
+              >
+                Password
+              </label>
               <button
                 type="button"
                 aria-pressed={showPassword}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="min-h-12 shrink-0 rounded-lg border border-slate-300 bg-slate-100 px-3 text-sm font-medium text-slate-800 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                className="text-xs text-[#b896ff] hover:text-white transition-colors cursor-pointer"
               >
                 {showPassword ? "Hide" : "Show"}
               </button>
             </div>
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              enterKeyHint="done"
+              required
+              minLength={8}
+              aria-invalid={Boolean(errorMessage)}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder="••••••••"
+              className="w-full min-h-12 rounded-xl bg-white/5 border border-white/15 px-4 py-3 text-base text-white placeholder-white/35 focus:outline-none focus:border-[#9b72eb] focus:ring-1 focus:ring-[#9b72eb] transition-all"
+            />
           </div>
 
+          {/* Bouton Sign In */}
           <button
             type="submit"
             disabled={submitting}
-            className="min-h-12 w-full rounded-lg bg-emerald-700 px-4 text-base font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+            className="w-full min-h-12 mt-2 rounded-full bg-white text-black hover:bg-[#6441A5] hover:text-white font-bold text-xs sm:text-sm tracking-[0.18em] uppercase py-3.5 shadow-[0_0_25px_rgba(100,65,165,0.45)] hover:shadow-[0_0_35px_rgba(155,114,235,0.85)] transition-all duration-300 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "Signing in..." : "Sign in"}
+            {submitting ? "Signing In..." : "Sign In"}
           </button>
         </form>
 
         {SHOW_DEMO_QUICKFILL ? (
-          <section aria-label="Demo accounts" className="mt-6 border-t border-slate-200 pt-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          <section aria-label="Demo accounts" className="mt-6 border-t border-white/10 pt-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/50">
               Demo quick-fill
             </p>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2.5 flex flex-wrap gap-2">
               {DEMO_ACCOUNTS.map((account) => (
                 <button
                   key={account.email}
@@ -161,7 +183,7 @@ export default function LoginPage() {
                     setPassword(account.password);
                     setErrorMessage(null);
                   }}
-                  className="min-h-10 rounded-md border border-slate-300 bg-slate-50 px-3 text-xs font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                  className="min-h-10 rounded-full border border-[#6441A5]/45 bg-white/5 px-3.5 text-xs font-medium text-white/85 hover:border-[#9b72eb] hover:bg-[#6441A5]/25 transition-colors cursor-pointer"
                 >
                   {account.label}
                 </button>
