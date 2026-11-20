@@ -1,16 +1,15 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import localFont from "next/font/local";
 import { useAuth } from "@/components/auth-provider";
+import { NyxoraWordmark } from "@/components/nyxora/brand";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { ApiError } from "@/lib/api";
-
-const duneRise = localFont({
-  src: "../../../dune_rise/Dune_Rise.ttf",
-  display: "swap",
-});
 
 const DEMO_ACCOUNTS = [
   { label: "Requester (Anis)", email: "requester@acme.local", password: "demo-requester-pass" },
@@ -58,140 +57,138 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="nyxora-animated-bg relative min-h-screen w-full flex flex-col items-center justify-center px-4 py-12 text-white overflow-hidden">
-      {/* Logo NYXORA -> retour vers Landing Page */}
-      <Link
-        href="/"
-        className={`${duneRise.className} text-2xl sm:text-3xl tracking-[0.25em] uppercase mb-8 drop-shadow-[0_0_20px_rgba(100,65,165,0.6)] hover:opacity-90 transition-opacity`}
-      >
-        NYXORA
-      </Link>
+    <main className="nyxora-animated-bg relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden px-4 py-12 text-white">
+      <NyxoraWordmark href="/" className="mb-8 text-2xl sm:text-3xl" />
 
-      {/* Carte Glassmorphism Sign In */}
-      <div className="w-full max-w-md rounded-2xl bg-black/55 backdrop-blur-xl border border-[#6441A5]/45 p-7 sm:p-8 shadow-[0_0_55px_rgba(100,65,165,0.32)]">
-        <div className="text-center mb-7">
-          <h1 id="signin-heading" className="text-xl sm:text-2xl font-bold tracking-[0.15em] uppercase">
+      <Card className="nyxora-glass w-full max-w-md rounded-2xl border p-2 text-white ring-0">
+        <CardHeader className="pt-5 text-center">
+          <CardTitle
+            id="signin-heading"
+            className="text-xl font-bold uppercase tracking-[0.15em] text-white sm:text-2xl"
+          >
             Sign In
-          </h1>
-          <p className="text-xs sm:text-sm text-white/60 mt-1.5 tracking-wide">
+          </CardTitle>
+          <CardDescription className="text-xs tracking-wide text-white/60 sm:text-sm">
             Access your private contract workspace
-          </p>
-        </div>
+          </CardDescription>
+        </CardHeader>
 
-        <form onSubmit={handleSubmit} aria-labelledby="signin-heading" className="space-y-5">
-          <div
-            role="status"
-            aria-live="polite"
-            className={
-              errorMessage
-                ? "rounded-xl border border-red-400/50 bg-red-950/60 px-4 py-2.5 text-xs sm:text-sm text-red-200"
-                : "sr-only"
-            }
-          >
-            {errorMessage ?? ""}
-          </div>
-
-          {/* Email */}
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-xs font-semibold uppercase tracking-[0.15em] text-white/80 mb-2"
+        <CardContent className="pb-6">
+          <form onSubmit={handleSubmit} aria-labelledby="signin-heading" className="space-y-5">
+            <div
+              role="status"
+              aria-live="polite"
+              className={
+                errorMessage
+                  ? "rounded-xl border border-red-400/50 bg-red-950/60 px-4 py-2.5 text-xs text-red-200 sm:text-sm"
+                  : "sr-only"
+              }
             >
-              Email
-            </label>
-            <input
-              ref={emailRef}
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="username"
-              spellCheck={false}
-              autoCapitalize="none"
-              enterKeyHint="next"
-              required
-              aria-invalid={Boolean(errorMessage)}
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errorMessage) setErrorMessage(null);
-              }}
-              placeholder="you@company.com"
-              className="w-full min-h-12 rounded-xl bg-white/5 border border-white/15 px-4 py-3 text-base text-white placeholder-white/35 focus:outline-none focus:border-[#9b72eb] focus:ring-1 focus:ring-[#9b72eb] transition-all"
-            />
-          </div>
-
-          {/* Password */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label
-                htmlFor="password"
-                className="block text-xs font-semibold uppercase tracking-[0.15em] text-white/80"
-              >
-                Password
-              </label>
-              <button
-                type="button"
-                aria-pressed={showPassword}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="text-xs text-[#b896ff] hover:text-white transition-colors cursor-pointer"
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
+              {errorMessage ?? ""}
             </div>
-            <input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
-              enterKeyHint="done"
-              required
-              minLength={8}
-              aria-invalid={Boolean(errorMessage)}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errorMessage) setErrorMessage(null);
-              }}
-              placeholder="••••••••"
-              className="w-full min-h-12 rounded-xl bg-white/5 border border-white/15 px-4 py-3 text-base text-white placeholder-white/35 focus:outline-none focus:border-[#9b72eb] focus:ring-1 focus:ring-[#9b72eb] transition-all"
-            />
-          </div>
 
-          {/* Bouton Sign In */}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full min-h-12 mt-2 rounded-full bg-white text-black hover:bg-[#6441A5] hover:text-white font-bold text-xs sm:text-sm tracking-[0.18em] uppercase py-3.5 shadow-[0_0_25px_rgba(100,65,165,0.45)] hover:shadow-[0_0_35px_rgba(155,114,235,0.85)] transition-all duration-300 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? "Signing In..." : "Sign In"}
-          </button>
-        </form>
+            <div className="space-y-2">
+              <Label
+                htmlFor="email"
+                className="text-xs font-semibold uppercase tracking-[0.15em] text-white/80"
+              >
+                Email
+              </Label>
+              <Input
+                ref={emailRef}
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="username"
+                spellCheck={false}
+                autoCapitalize="none"
+                enterKeyHint="next"
+                required
+                aria-invalid={Boolean(errorMessage)}
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                placeholder="you@company.com"
+                className="min-h-12 rounded-xl border-white/15 bg-white/5 px-4 text-base text-white placeholder:text-white/35 focus-visible:border-[#9b72eb] focus-visible:ring-[#9b72eb]/40"
+              />
+            </div>
 
-        {SHOW_DEMO_QUICKFILL ? (
-          <section aria-label="Demo accounts" className="mt-6 border-t border-white/10 pt-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/50">
-              Demo quick-fill
-            </p>
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {DEMO_ACCOUNTS.map((account) => (
-                <button
-                  key={account.email}
-                  type="button"
-                  onClick={() => {
-                    setEmail(account.email);
-                    setPassword(account.password);
-                    setErrorMessage(null);
-                  }}
-                  className="min-h-10 rounded-full border border-[#6441A5]/45 bg-white/5 px-3.5 text-xs font-medium text-white/85 hover:border-[#9b72eb] hover:bg-[#6441A5]/25 transition-colors cursor-pointer"
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="password"
+                  className="text-xs font-semibold uppercase tracking-[0.15em] text-white/80"
                 >
-                  {account.label}
+                  Password
+                </Label>
+                <button
+                  type="button"
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="cursor-pointer text-xs text-[#b896ff] transition-colors hover:text-white"
+                >
+                  {showPassword ? "Hide" : "Show"}
                 </button>
-              ))}
+              </div>
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                enterKeyHint="done"
+                required
+                minLength={8}
+                aria-invalid={Boolean(errorMessage)}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                placeholder="••••••••"
+                className="min-h-12 rounded-xl border-white/15 bg-white/5 px-4 text-base text-white placeholder:text-white/35 focus-visible:border-[#9b72eb] focus-visible:ring-[#9b72eb]/40"
+              />
             </div>
-          </section>
-        ) : null}
-      </div>
+
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="mt-2 min-h-12 w-full cursor-pointer rounded-full bg-white text-xs font-bold uppercase tracking-[0.18em] text-black shadow-[0_0_25px_rgba(100,65,165,0.45)] transition-all duration-300 hover:bg-[#6441A5] hover:text-white hover:shadow-[0_0_35px_rgba(155,114,235,0.85)] sm:text-sm"
+            >
+              {submitting ? "Signing In..." : "Sign In"}
+            </Button>
+          </form>
+
+          {SHOW_DEMO_QUICKFILL ? (
+            <section aria-label="Demo accounts" className="mt-6 space-y-3">
+              <Separator className="bg-white/10" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/50">
+                Demo quick-fill
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <Button
+                    key={account.email}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEmail(account.email);
+                      setPassword(account.password);
+                      setErrorMessage(null);
+                    }}
+                    className="min-h-9 cursor-pointer rounded-full border-[#6441A5]/45 bg-white/5 px-3.5 text-xs text-white/85 hover:border-[#9b72eb] hover:bg-[#6441A5]/25"
+                  >
+                    {account.label}
+                  </Button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </CardContent>
+      </Card>
     </main>
   );
 }

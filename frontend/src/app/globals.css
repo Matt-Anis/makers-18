@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @keyframes nyxoraCardinalMove {
   0% {
@@ -45,10 +49,144 @@
   animation: nyxoraCardinalMove 10s ease-in-out infinite;
 }
 
+.nyxora-workspace-bg {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(100, 65, 165, 0.22) 0%, transparent 45%),
+    radial-gradient(circle at 85% 15%, rgba(45, 27, 84, 0.32) 0%, transparent 40%),
+    #0d0817;
+}
+
+.nyxora-glass {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(20px);
+  border-color: rgba(100, 65, 165, 0.45);
+  box-shadow: 0 0 50px rgba(100, 65, 165, 0.24);
+}
+
 .nyxora-btn-border {
   animation: buttonSpinBorder 4s linear infinite;
 }
 
 .nyxora-btn-shimmer {
   animation: buttonShimmer 3.5s ease-in-out infinite;
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  color-scheme: dark;
+  --background: #0d0817;
+  --foreground: #ffffff;
+  --card: rgba(0, 0, 0, 0.55);
+  --card-foreground: #ffffff;
+  --popover: #140d24;
+  --popover-foreground: #ffffff;
+  --primary: #6441A5;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(255, 255, 255, 0.08);
+  --secondary-foreground: #ffffff;
+  --muted: rgba(255, 255, 255, 0.07);
+  --muted-foreground: rgba(255, 255, 255, 0.65);
+  --accent: rgba(100, 65, 165, 0.28);
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --border: rgba(100, 65, 165, 0.38);
+  --input: rgba(255, 255, 255, 0.16);
+  --ring: #9b72eb;
+  --chart-1: #9b72eb;
+  --chart-2: #6441A5;
+  --chart-3: #b896ff;
+  --chart-4: #38bdf8;
+  --chart-5: #34d399;
+  --radius: 0.75rem;
+  --sidebar: #090512;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #6441A5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(100, 65, 165, 0.25);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(100, 65, 165, 0.3);
+  --sidebar-ring: #9b72eb;
+}
+
+.dark {
+  --background: #0d0817;
+  --foreground: #ffffff;
+  --card: rgba(0, 0, 0, 0.55);
+  --card-foreground: #ffffff;
+  --popover: #140d24;
+  --popover-foreground: #ffffff;
+  --primary: #6441A5;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(255, 255, 255, 0.08);
+  --secondary-foreground: #ffffff;
+  --muted: rgba(255, 255, 255, 0.07);
+  --muted-foreground: rgba(255, 255, 255, 0.65);
+  --accent: rgba(100, 65, 165, 0.28);
+  --accent-foreground: #ffffff;
+  --destructive: #f87171;
+  --border: rgba(100, 65, 165, 0.38);
+  --input: rgba(255, 255, 255, 0.16);
+  --ring: #9b72eb;
+  --sidebar: #090512;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #6441A5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(100, 65, 165, 0.25);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(100, 65, 165, 0.3);
+  --sidebar-ring: #9b72eb;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
