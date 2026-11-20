@@ -6,7 +6,10 @@ from app.config import get_settings
 from app.db import Base, SessionLocal, engine
 from app.routers.audit import router as audit_router
 from app.routers.auth import router as auth_router
+from app.routers.providers import router as providers_router
+from app.routers.rules import router as rules_router
 from app.routers.sessions import router as sessions_router
+from app.routers.settings import router as settings_router
 from app.seed import (
     ensure_default_workspace_settings,
     normalize_legacy_roles,
@@ -31,6 +34,9 @@ app = FastAPI(title="Contract Privacy Gateway", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(sessions_router)
 app.include_router(audit_router)
+app.include_router(settings_router)
+app.include_router(providers_router)
+app.include_router(rules_router)
 
 
 @app.get("/health")
