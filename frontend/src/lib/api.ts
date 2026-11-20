@@ -28,11 +28,6 @@ export interface MaskedMessage {
   created_at: string;
 }
 
-export interface GatewaySessionDetail extends GatewaySession {
-  vault_active: boolean;
-  masked_messages: MaskedMessage[];
-}
-
 export interface FindingOut {
   id: string;
   type: string;
@@ -42,6 +37,23 @@ export interface FindingOut {
   source: string;
   confidence: number;
   placeholder: string;
+}
+
+export interface PendingReviewOut {
+  review_id: string;
+  provider: string;
+  model: string;
+  thinking_effort: "low" | "medium" | "high";
+  raw_text: string;
+  findings: FindingOut[];
+  masked_preview: string;
+  created_at: string;
+}
+
+export interface GatewaySessionDetail extends GatewaySession {
+  vault_active: boolean;
+  masked_messages: MaskedMessage[];
+  pending_review: PendingReviewOut | null;
 }
 
 export interface SendMessageResponse {

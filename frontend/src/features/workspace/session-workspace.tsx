@@ -155,6 +155,19 @@ export function SessionWorkspace() {
       .then((detail) => {
         if (!active) return;
         setMessages(detail.masked_messages.map(toChatMessage));
+        if (detail.pending_review) {
+          setPendingReviewId(detail.pending_review.review_id);
+          setReviewText(detail.pending_review.raw_text);
+          setMaskedPreview(detail.pending_review.masked_preview);
+          setFindings(detail.pending_review.findings.map(toFinding));
+          setStep("needs_review");
+        } else {
+          setPendingReviewId(null);
+          setReviewText("");
+          setMaskedPreview("");
+          setFindings([]);
+          setStep("idle");
+        }
         if (!detail.vault_active) {
           setStatusMessage(
             "This session's vault has expired or been wiped; historical messages cannot be unmasked.",
