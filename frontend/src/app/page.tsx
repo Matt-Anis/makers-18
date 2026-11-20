@@ -1,7 +1,6 @@
 import Link from "next/link";
 import localFont from "next/font/local";
 import { ArrowRight } from "lucide-react";
-import { LiquidBackdrop } from "@/components/nyxora/liquid-backdrop";
 
 const duneRise = localFont({
   src: "../../dune_rise/Dune_Rise.ttf",
@@ -11,8 +10,6 @@ const duneRise = localFont({
 export default function LandingPage() {
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden px-4 text-white">
-      <LiquidBackdrop />
-
       <div className="relative z-10 flex max-w-4xl flex-col items-center text-center">
         <h1
           className={`${duneRise.className} mb-5 text-5xl uppercase tracking-[0.25em] text-white sm:text-7xl md:text-8xl`}

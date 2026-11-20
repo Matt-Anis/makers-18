@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { NyxoraWordmark } from "@/components/nyxora/brand";
-import { LiquidBackdrop } from "@/components/nyxora/liquid-backdrop";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,8 +51,6 @@ export default function SignInPage() {
 
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 py-12 text-white">
-      <LiquidBackdrop />
-
       <NyxoraWordmark href="/" className="mb-8 text-2xl sm:text-3xl" />
 
       <Card className="nyxora-surface w-full max-w-md gap-6 rounded-3xl border p-7 ring-0 sm:p-8">
