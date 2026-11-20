@@ -64,7 +64,10 @@ BUILTIN_RULES: tuple[tuple[str, re.Pattern[str], str, float], ...] = (
     (
         "COMPANY",
         re.compile(
-            r"\b[A-Z][A-Za-z0-9&.,' -]{1,45}\s+(?:SARL|SPA|EURL|SNC|LLC|Inc\.?|Corp\.?|Ltd\.?|SAS|GmbH)\b"
+            r"\b(?!(?:Agreement|Between|Check|Compare|Draft|Email|For|From|Notice|Regarding|Review|Verify|With)\b)"
+            r"[A-Z0-9][A-Za-z0-9&.,'-]{0,25}"
+            r"(?:\s+(?:of|the|and|for|de|du|des|et|[A-Z0-9][A-Za-z0-9&.,'-]{0,25})){0,4}"
+            r"\s+(?:SARL|SPA|EURL|SNC|LLC|Inc\.?|Corp\.?|Ltd\.?|SAS|GmbH)\b"
         ),
         "ner",
         0.93,
