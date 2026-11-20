@@ -8,7 +8,7 @@ from app.auth.dependencies import extract_session_token, get_current_user, requi
 from app.config import Settings, get_settings
 from app.db import get_db
 from app.models import AuditLog, AuthSession, User, UserRole, utcnow
-from app.schemas.auth import CreateUserRequest, LoginRequest, UserOut
+from app.schemas.auth import CreateUserRequest, LoginRequest, UpdateUserStatusRequest, UserOut
 from app.security import (
     generate_session_token,
     hash_password,
@@ -139,3 +139,40 @@ def create_user(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.patch("/users/{user_id}", response_model=UserOut)
+def update_user_status(
+    user_id: str,
+    payload: UpdateUserStatusRequest,
+    owner: User = Depends(require_roles(UserRole.OWNER)),
+    db: Session = Depends(get_db),
+) -> User:
+    """Activate or deactivate a provisioned workspace account (owner only)."""
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if target.id == owner.id and not payload.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot deactivate your own owner account",
+        )
+
+    target.is_active = payload.is_active
+    if not payload.is_active:
+        now = utcnow()
+        active_sessions = list(
+            db.scalars(
+                select(AuthSession).where(
+                    AuthSession.user_id == target.id,
+                    AuthSession.revoked_at.is_(None),
+                )
+            )
+        )
+        for sess in active_sessions:
+            sess.revoked_at = now
+
+    db.add(AuditLog(user_id=owner.id, action="auth.user_status_updated"))
+    db.commit()
+    db.refresh(target)
+    return target
