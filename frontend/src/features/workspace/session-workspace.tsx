@@ -17,7 +17,9 @@ import {
 import {
   ApiError,
   apiFetch,
+  apiUpload,
   DiscoveredModel,
+  ExtractedDocument,
   FindingOut,
   GatewaySession,
   GatewaySessionDetail,
@@ -79,6 +81,8 @@ export function SessionWorkspace() {
 
   const [inputText, setInputText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileSummary, setFileSummary] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [step, setStep] = useState<
     "idle" | "detecting" | "clean" | "needs_review" | "sending"
   >("idle");
@@ -245,6 +249,7 @@ export function SessionWorkspace() {
       clearPendingReview();
       setInputText("");
       setFileName(null);
+      setFileSummary(null);
       setStep("idle");
       setStatusMessage("Session ended and its encrypted vault was wiped from storage.");
       await refreshSessions();
@@ -295,6 +300,7 @@ export function SessionWorkspace() {
       setMessages((prev) => [...prev, ...appended]);
       setInputText("");
       setFileName(null);
+      setFileSummary(null);
       setStep(response.findings.length === 0 ? "clean" : "idle");
       await refreshSessions();
     } catch (error) {
@@ -321,6 +327,7 @@ export function SessionWorkspace() {
       clearPendingReview();
       setInputText("");
       setFileName(null);
+      setFileSummary(null);
       setStep("idle");
       await refreshSessions();
     } catch (error) {
@@ -350,6 +357,47 @@ export function SessionWorkspace() {
         error instanceof ApiError ? error.message : "Failed to reject pending review.",
       );
       setStep("needs_review");
+    }
+  }
+
+  async function handleFileUpload(file: File) {
+    setUploadingFile(true);
+    setStatusMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const extracted = await apiUpload<ExtractedDocument>("/ingestion/extract", formData);
+      setInputText(extracted.text);
+      setFileName(extracted.filename);
+
+      const details: string[] = [];
+      if (extracted.page_count) {
+        details.push(`${extracted.page_count} page${extracted.page_count === 1 ? "" : "s"}`);
+      }
+      if (extracted.stripped_metadata_fields.length > 0) {
+        details.push(`${extracted.stripped_metadata_fields.length} metadata fields stripped`);
+      }
+      if (extracted.stripped_comments_count > 0) {
+        details.push(`${extracted.stripped_comments_count} comment(s) stripped`);
+      }
+      if (extracted.stripped_revisions_count > 0) {
+        details.push(`${extracted.stripped_revisions_count} deleted revision(s) stripped`);
+      }
+      if (details.length === 0) {
+        details.push("clean text extracted");
+      }
+      setFileSummary(details.join(", "));
+      if (extracted.truncated) {
+        setStatusMessage(
+          `Extracted "${extracted.filename}" (truncated to 50,000 characters to fit the review limit).`,
+        );
+      }
+    } catch (error) {
+      setStatusMessage(
+        error instanceof ApiError ? error.message : "Could not extract text from uploaded file.",
+      );
+    } finally {
+      setUploadingFile(false);
     }
   }
 
@@ -395,9 +443,9 @@ export function SessionWorkspace() {
         inputText={inputText}
         onInputChange={setInputText}
         fileName={fileName}
-        onFileAttach={(name) => {
-          setFileName(name);
-        }}
+        fileSummary={fileSummary}
+        uploading={uploadingFile}
+        onFileAttach={handleFileUpload}
         step={step}
         onScan={handleScan}
       />
