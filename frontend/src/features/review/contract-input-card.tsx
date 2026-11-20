@@ -11,7 +11,9 @@ interface ContractInputCardProps {
   inputText: string;
   onInputChange: (value: string) => void;
   fileName: string | null;
-  onFileAttach: (name: string) => void;
+  fileSummary?: string | null;
+  uploading?: boolean;
+  onFileAttach: (file: File) => void;
   step: "idle" | "detecting" | "clean" | "needs_review" | "sending";
   onScan: () => void;
 }
@@ -20,11 +22,13 @@ export function ContractInputCard({
   inputText,
   onInputChange,
   fileName,
+  fileSummary,
+  uploading = false,
   onFileAttach,
   step,
   onScan,
 }: ContractInputCardProps) {
-  const isWorking = step === "detecting" || step === "sending";
+  const isWorking = step === "detecting" || step === "sending" || uploading;
 
   return (
     <Card className="nyxora-surface rounded-3xl border ring-0">
@@ -65,16 +69,18 @@ export function ContractInputCard({
               className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-4 text-xs font-medium text-white/85 transition-[background-color,border-color] duration-200 ease-out hover:border-white/22 hover:bg-white/[0.09] focus-within:ring-2 focus-within:ring-[#9b82ff]/40"
             >
               <Upload className="size-3.5" aria-hidden="true" />
-              <span>Attach PDF / DOCX</span>
+              <span>{uploading ? "Extracting & scrubbing..." : "Attach PDF / DOCX"}</span>
               <input
                 id="contract-file-upload"
                 type="file"
                 accept=".pdf,.docx,.txt"
+                disabled={isWorking}
                 className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    onFileAttach(file.name);
+                    onFileAttach(file);
+                    e.target.value = "";
                   }
                 }}
               />
@@ -82,7 +88,8 @@ export function ContractInputCard({
 
             {fileName ? (
               <span className="text-xs text-[#a78bfa]">
-                Attached: {fileName} (metadata stripped)
+                Attached: {fileName}
+                {fileSummary ? ` (${fileSummary})` : ""}
               </span>
             ) : null}
           </div>

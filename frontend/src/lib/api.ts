@@ -73,6 +73,18 @@ export interface ReviewRejectResponse {
   review_id: string;
 }
 
+export interface ExtractedDocument {
+  filename: string;
+  file_type: "pdf" | "docx" | "txt";
+  text: string;
+  char_count: number;
+  page_count: number | null;
+  stripped_metadata_fields: string[];
+  stripped_comments_count: number;
+  stripped_revisions_count: number;
+  truncated: boolean;
+}
+
 export interface AuditLogEntry {
   id: string;
   user_id: string | null;
@@ -170,6 +182,30 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      if (payload.detail) {
+        message = payload.detail;
+      }
+    } catch {
+      // Ignore non-JSON error payloads.
+    }
+    throw new ApiError(response.status, message);
+  }
+
+  return (await response.json()) as T;
+}
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    let message = `Upload failed (${response.status})`;
     try {
       const payload = (await response.json()) as { detail?: string };
       if (payload.detail) {
