@@ -176,6 +176,51 @@ export interface GpuTestResult {
   detail: string;
 }
 
+export interface EntityMetric {
+  type: string;
+  recall: number | null;
+  precision: number | null;
+  tp: number;
+  fp: number;
+  fn: number;
+  support: number;
+}
+
+export interface AblationLayerMetric {
+  key: string;
+  label: string;
+  recall: number | null;
+  precision: number | null;
+  leak_free_rate: number | null;
+  active: boolean;
+  note: string | null;
+}
+
+export interface DatasetMetrics {
+  document_count: number;
+  overall_recall: number;
+  overall_precision: number;
+  leak_free_rate: number;
+  unmask_round_trip: number;
+  tp: number;
+  fp: number;
+  fn: number;
+  per_entity: EntityMetric[];
+  ablation: AblationLayerMetric[];
+}
+
+export interface MetricsReport {
+  has_run: boolean;
+  run_id: string | null;
+  created_at: string | null;
+  duration_ms: number | null;
+  presidio_active: boolean;
+  gpu_slm_configured: boolean;
+  gpu_slm_active: boolean;
+  synthetic: DatasetMetrics | null;
+  realistic: DatasetMetrics | null;
+}
+
 export class ApiError extends Error {
   status: number;
 
