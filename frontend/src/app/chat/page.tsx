@@ -1,5 +1,5 @@
-import { WorkspaceShell } from "@/components/workspace-shell";
+import { SessionWorkspace } from "@/features/workspace/session-workspace";
 
 export default function ChatPage() {
-  return <WorkspaceShell />;
+  return <SessionWorkspace />;
 }
