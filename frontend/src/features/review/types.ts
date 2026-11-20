@@ -11,7 +11,7 @@ export const ENTITY_TYPES = [
 
 export type EntityType = (typeof ENTITY_TYPES)[number];
 
-export type FindingSource = "rule" | "ner" | "pii-model" | "llm" | "custom";
+export type FindingSource = "vault" | "rule" | "ner" | "pii-model" | "llm" | "custom";
 
 export interface Finding {
   id: string;
@@ -21,7 +21,6 @@ export interface Finding {
   end: number;
   source: FindingSource;
   confidence: number;
-  status: "pending" | "approved" | "dismissed";
   placeholder: string;
 }
 
