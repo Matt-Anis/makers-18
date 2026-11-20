@@ -44,6 +44,12 @@ class CreateUserRequest(BaseModel):
         return cleaned
 
 
+class UpdateUserStatusRequest(BaseModel):
+    """Owner-only payload to activate or deactivate a workspace user."""
+
+    is_active: bool
+
+
 class UserOut(BaseModel):
     """Public user profile returned to authenticated clients."""
 

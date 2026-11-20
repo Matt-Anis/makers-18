@@ -29,6 +29,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   unmaskedText: string;
   maskedText: string;
+  modelLabel?: string;
 }
 
 export const ENTITY_COLORS: Record<EntityType, string> = {
@@ -41,13 +42,6 @@ export const ENTITY_COLORS: Record<EntityType, string> = {
   BANK: "bg-cyan-500/30 border-cyan-400 text-cyan-200",
   CUSTOM: "bg-fuchsia-500/30 border-fuchsia-400 text-fuchsia-200",
 };
-
-export const PROVIDERS = [
-  { id: "openai", label: "GPT-4o (OpenAI)" },
-  { id: "anthropic", label: "Claude 3.5 Sonnet (Anthropic)" },
-  { id: "gemini", label: "Gemini 2.5 Pro (Google)" },
-  { id: "mock", label: "Local Mock Provider" },
-] as const;
 
 export const SAMPLE_CONTRACT =
   "SERVICE AGREEMENT between Atlas Tech SARL (Tax ID: 001928374650123) and Karim Benali, residing at 14 Rue Didouche Mourad, Algiers. Contact: karim.benali@atlastech.dz | Phone: +213 550 12 34 56. Project codename: APOLLO-X.";

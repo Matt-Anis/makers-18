@@ -38,12 +38,13 @@ const FALLBACK_MODEL: DiscoveredModel = {
   thinking_efforts: ["low", "medium", "high"],
 };
 
-function toChatMessage(msg: MaskedMessage): ChatMessage {
+function toChatMessage(msg: MaskedMessage, modelLabel?: string): ChatMessage {
   return {
     id: msg.id,
     role: msg.role === "assistant" ? "assistant" : "user",
     unmaskedText: msg.unmasked_content,
     maskedText: msg.masked_content,
+    modelLabel: msg.role === "assistant" ? modelLabel : undefined,
   };
 }
 
@@ -67,6 +68,7 @@ export function SessionWorkspace() {
   const { user } = useAuth();
 
   const [models, setModels] = useState<DiscoveredModel[]>([FALLBACK_MODEL]);
+  const [hasEnabledModels, setHasEnabledModels] = useState(true);
   const [selectedModelKey, setSelectedModelKey] = useState<string>(
     modelOptionKey(FALLBACK_MODEL),
   );
@@ -127,12 +129,22 @@ export function SessionWorkspace() {
 
         if (discovery.models.length > 0) {
           setModels(discovery.models);
+          setHasEnabledModels(true);
           const defaultKey =
             discovery.default_provider && discovery.default_model
               ? `${discovery.default_provider}::${discovery.default_model}`
               : modelOptionKey(discovery.models[0]);
           const exists = discovery.models.some((m) => modelOptionKey(m) === defaultKey);
           setSelectedModelKey(exists ? defaultKey : modelOptionKey(discovery.models[0]));
+        } else {
+          setModels([]);
+          setHasEnabledModels(false);
+          setSelectedModelKey("");
+          setStatusMessage(
+            user.role === "owner"
+              ? "No AI models are enabled yet. Open Owner Settings (/rules) to configure a provider."
+              : "No AI models are currently enabled for this workspace. Ask your Owner to enable one.",
+          );
         }
         setAllowAutoReview(discovery.allow_auto_review);
         setReviewMode(discovery.default_review_mode);
@@ -158,7 +170,7 @@ export function SessionWorkspace() {
     apiFetch<GatewaySessionDetail>(`/sessions/${activeSessionId}`)
       .then((detail) => {
         if (!active) return;
-        setMessages(detail.masked_messages.map(toChatMessage));
+        setMessages(detail.masked_messages.map((item) => toChatMessage(item)));
         if (detail.pending_review) {
           setPendingReviewId(detail.pending_review.review_id);
           setReviewText(detail.pending_review.raw_text);
@@ -296,7 +308,9 @@ export function SessionWorkspace() {
 
       const appended: ChatMessage[] = [];
       if (response.user_message) appended.push(toChatMessage(response.user_message));
-      if (response.assistant_message) appended.push(toChatMessage(response.assistant_message));
+      if (response.assistant_message) {
+        appended.push(toChatMessage(response.assistant_message, selectedModel.display_name));
+      }
       setMessages((prev) => [...prev, ...appended]);
       setInputText("");
       setFileName(null);
@@ -322,7 +336,9 @@ export function SessionWorkspace() {
       );
       const appended: ChatMessage[] = [];
       if (response.user_message) appended.push(toChatMessage(response.user_message));
-      if (response.assistant_message) appended.push(toChatMessage(response.assistant_message));
+      if (response.assistant_message) {
+        appended.push(toChatMessage(response.assistant_message, selectedModel.display_name));
+      }
       setMessages((prev) => [...prev, ...appended]);
       clearPendingReview();
       setInputText("");
@@ -445,6 +461,7 @@ export function SessionWorkspace() {
         fileName={fileName}
         fileSummary={fileSummary}
         uploading={uploadingFile}
+        canScan={hasEnabledModels}
         onFileAttach={handleFileUpload}
         step={step}
         onScan={handleScan}

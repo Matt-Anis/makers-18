@@ -65,12 +65,56 @@ class DiscoveredModelOut(BaseModel):
     thinking_efforts: list[str]
 
 
+class ProviderDiscoverRequest(BaseModel):
+    """Optional unsaved draft credentials/URL to probe during live model discovery."""
+
+    api_key: str | None = Field(default=None, max_length=512)
+    base_url: str | None = Field(default=None, max_length=255)
+
+    @field_validator("base_url")
+    @classmethod
+    def clean_discover_base_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
 class ProviderDiscoveryResult(BaseModel):
     """Owner-triggered live/fallback discovery response for a single provider."""
 
     provider: str
     source: Literal["live", "fallback"]
     models: list[DiscoveredModelOut]
+
+
+class GpuTestRequest(BaseModel):
+    """Optional unsaved GPU SLM settings to test before saving."""
+
+    gpu_llm_endpoint: str | None = Field(default=None, max_length=255)
+    gpu_llm_model: str | None = Field(default=None, max_length=128)
+    gpu_llm_api_key: str | None = Field(default=None, max_length=512)
+    clear_gpu_llm_api_key: bool = False
+
+    @field_validator("gpu_llm_endpoint", "gpu_llm_model")
+    @classmethod
+    def clean_gpu_field(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class GpuTestResult(BaseModel):
+    """Connectivity and model-availability probe result for the local GPU SLM endpoint."""
+
+    ok: bool
+    endpoint: str
+    model: str
+    latency_ms: int | None = None
+    available_models: list[str] = Field(default_factory=list)
+    model_found: bool = False
+    detail: str
 
 
 class ModelDiscoveryResponse(BaseModel):

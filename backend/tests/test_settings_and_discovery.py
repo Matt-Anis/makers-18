@@ -277,3 +277,74 @@ def test_owner_workspace_settings_and_rules_crud(api_env) -> None:
         files={"file": ("policy.md", md_doc, "text/markdown")},
     )
     assert denied.status_code == 403
+
+
+def test_gpu_probe_draft_discovery_and_user_status_toggle(
+    api_env,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.routers.settings as settings_router
+
+    client, _sf = api_env
+    _login(client, "owner@acme.local", "owner-secret-123")
+
+    # Draft discovery works without saving the provider key/URL first.
+    class _FakeModelsResp:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {"data": [{"id": "Qwen/Qwen2.5-7B-Instruct-AWQ"}]}
+
+    monkeypatch.setattr(discovery_module.httpx, "get", lambda *_args, **_kwargs: _FakeModelsResp())
+    draft_disc = client.post(
+        "/settings/providers/openai_compatible/discover",
+        json={"base_url": "https://pod-8000.proxy.runpod.net/v1", "api_key": "draft-secret"},
+    )
+    assert draft_disc.status_code == 200
+    assert draft_disc.json()["source"] == "live"
+    assert draft_disc.json()["models"][0]["model_id"] == "Qwen/Qwen2.5-7B-Instruct-AWQ"
+
+    # GPU connection probe succeeds when model matches /models.
+    monkeypatch.setattr(settings_router.httpx, "get", lambda *_args, **_kwargs: _FakeModelsResp())
+    ok_probe = client.post(
+        "/settings/workspace/test-gpu",
+        json={
+            "gpu_llm_endpoint": "https://pod-8000.proxy.runpod.net/v1",
+            "gpu_llm_model": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+            "gpu_llm_api_key": "draft-secret",
+        },
+    )
+    assert ok_probe.status_code == 200
+    ok_data = ok_probe.json()
+    assert ok_data["ok"] is True
+    assert ok_data["model_found"] is True
+    assert "Qwen/Qwen2.5-7B-Instruct-AWQ" in ok_data["available_models"]
+
+    # GPU probe reports model mismatch clearly.
+    mismatch_probe = client.post(
+        "/settings/workspace/test-gpu",
+        json={
+            "gpu_llm_endpoint": "https://pod-8000.proxy.runpod.net/v1",
+            "gpu_llm_model": "Qwen/Qwen3-8B",
+        },
+    )
+    assert mismatch_probe.status_code == 200
+    assert mismatch_probe.json()["ok"] is False
+    assert mismatch_probe.json()["model_found"] is False
+
+    # Owner can deactivate/reactivate another user, but not themselves.
+    users = client.get("/auth/users").json()
+    owner_row = next(u for u in users if u["email"] == "owner@acme.local")
+    member_row = next(u for u in users if u["email"] == "user@acme.local")
+
+    self_disable = client.patch(f"/auth/users/{owner_row['id']}", json={"is_active": False})
+    assert self_disable.status_code == 400
+
+    disable_member = client.patch(f"/auth/users/{member_row['id']}", json={"is_active": False})
+    assert disable_member.status_code == 200
+    assert disable_member.json()["is_active"] is False
+
+    reactivate_member = client.patch(f"/auth/users/{member_row['id']}", json={"is_active": True})
+    assert reactivate_member.status_code == 200
+    assert reactivate_member.json()["is_active"] is True

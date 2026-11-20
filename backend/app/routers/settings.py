@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import time
+
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,8 +11,11 @@ from app.models import AuditLog, ProviderConfig, User, UserRole, WorkspaceSettin
 from app.providers.discovery import PROVIDER_CATALOG, discover_provider_models
 from app.schemas.settings import (
     DiscoveredModelOut,
+    GpuTestRequest,
+    GpuTestResult,
     ProviderConfigOut,
     ProviderConfigUpsert,
+    ProviderDiscoverRequest,
     ProviderDiscoveryResult,
     ProviderId,
     WorkspaceSettingsOut,
@@ -97,19 +103,28 @@ def upsert_provider_config(
 @router.post("/providers/{provider}/discover", response_model=ProviderDiscoveryResult)
 def discover_models_for_provider(
     provider: ProviderId,
+    payload: ProviderDiscoverRequest | None = Body(default=None),
     _owner: User = Depends(require_roles(UserRole.OWNER)),
     db: Session = Depends(get_db),
 ) -> ProviderDiscoveryResult:
-    """Discover available models for a configured provider (owner only)."""
+    """Discover available models for a provider using draft or saved credentials (owner only)."""
     row = db.scalar(select(ProviderConfig).where(ProviderConfig.provider == provider))
     raw_key: str | None = None
-    if row and row.encrypted_api_key:
+    if payload and payload.api_key and payload.api_key.strip():
+        raw_key = payload.api_key.strip()
+    elif row and row.encrypted_api_key:
         raw_key = decrypt_secret(row.encrypted_api_key, get_secret_fernet())
+
+    effective_base_url = (
+        payload.base_url
+        if payload and payload.base_url
+        else (row.base_url if row else None)
+    )
 
     models, source = discover_provider_models(
         provider=provider,
         api_key=raw_key,
-        base_url=row.base_url if row else None,
+        base_url=effective_base_url,
     )
     return ProviderDiscoveryResult(
         provider=provider,
@@ -202,3 +217,87 @@ def update_workspace_settings(
     db.commit()
     db.refresh(settings_row)
     return _serialize_workspace_settings(settings_row)
+
+
+@router.post("/workspace/test-gpu", response_model=GpuTestResult)
+def test_gpu_slm_connection(
+    payload: GpuTestRequest | None = Body(default=None),
+    _owner: User = Depends(require_roles(UserRole.OWNER)),
+    db: Session = Depends(get_db),
+) -> GpuTestResult:
+    """Probe the configured (or draft) OpenAI-compatible GPU SLM endpoint (owner only)."""
+    settings_row = _get_or_create_workspace_settings(db)
+    endpoint = (
+        payload.gpu_llm_endpoint
+        if payload and payload.gpu_llm_endpoint
+        else settings_row.gpu_llm_endpoint
+    )
+    model = (
+        payload.gpu_llm_model
+        if payload and payload.gpu_llm_model
+        else (settings_row.gpu_llm_model or "Qwen/Qwen2.5-7B-Instruct-AWQ")
+    )
+
+    if not endpoint:
+        return GpuTestResult(
+            ok=False,
+            endpoint="",
+            model=model,
+            detail="GPU SLM endpoint URL is required.",
+        )
+
+    cleaned_endpoint = endpoint.rstrip("/")
+    if cleaned_endpoint.endswith("/chat/completions"):
+        models_url = f"{cleaned_endpoint.removesuffix('/chat/completions')}/models"
+    else:
+        models_url = f"{cleaned_endpoint}/models"
+
+    api_key: str | None = None
+    if payload and payload.gpu_llm_api_key and payload.gpu_llm_api_key.strip():
+        api_key = payload.gpu_llm_api_key.strip()
+    elif not (payload and payload.clear_gpu_llm_api_key) and settings_row.encrypted_gpu_llm_api_key:
+        api_key = decrypt_secret(settings_row.encrypted_gpu_llm_api_key, get_secret_fernet())
+
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    started = time.perf_counter()
+    try:
+        resp = httpx.get(models_url, headers=headers, timeout=8.0)
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        resp.raise_for_status()
+        data = resp.json()
+        available_models = [
+            str(item["id"])
+            for item in data.get("data", [])
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        ]
+        model_found = model in available_models if available_models else True
+        detail = (
+            f"Connected in {latency_ms}ms. Model '{model}' is ready."
+            if model_found
+            else f"Connected in {latency_ms}ms, but '{model}' was not in /models ({', '.join(available_models[:4]) or 'none'})."
+        )
+        return GpuTestResult(
+            ok=model_found,
+            endpoint=cleaned_endpoint,
+            model=model,
+            latency_ms=latency_ms,
+            available_models=available_models,
+            model_found=model_found,
+            detail=detail,
+        )
+    except httpx.HTTPStatusError as exc:
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        return GpuTestResult(
+            ok=False,
+            endpoint=cleaned_endpoint,
+            model=model,
+            latency_ms=latency_ms,
+            detail=f"Endpoint returned HTTP {exc.response.status_code}. Check API key or URL.",
+        )
+    except Exception as exc:  # noqa: BLE001 — return actionable probe failure instead of 500
+        return GpuTestResult(
+            ok=False,
+            endpoint=cleaned_endpoint,
+            model=model,
+            detail=f"Could not reach GPU endpoint: {type(exc).__name__}",
+        )
