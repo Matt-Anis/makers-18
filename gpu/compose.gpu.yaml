@@ -1,0 +1,53 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: nyxora-vllm-slm
+    restart: unless-stopped
+    ipc: host
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+      SLM_MODEL: ${SLM_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}
+      QUANTIZATION: ${QUANTIZATION:-awq}
+      MAX_MODEL_LEN: ${MAX_MODEL_LEN:-2048}
+      GPU_MEMORY_UTILIZATION: ${GPU_MEMORY_UTILIZATION:-0.90}
+      MAX_NUM_SEQS: ${MAX_NUM_SEQS:-16}
+      VLLM_API_KEY: ${VLLM_API_KEY:-}
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - |
+        ARGS=(
+          --host 0.0.0.0
+          --port 8000
+          --model "$$SLM_MODEL"
+          --enable-prefix-caching
+          --max-model-len "$$MAX_MODEL_LEN"
+          --gpu-memory-utilization "$$GPU_MEMORY_UTILIZATION"
+          --max-num-seqs "$$MAX_NUM_SEQS"
+        )
+        if [ -n "$$QUANTIZATION" ]; then
+          ARGS+=(--quantization "$$QUANTIZATION")
+        fi
+        if [ -n "$$VLLM_API_KEY" ]; then
+          ARGS+=(--api-key "$$VLLM_API_KEY")
+        fi
+        exec vllm serve "$${ARGS[@]}"
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  hf_cache:
