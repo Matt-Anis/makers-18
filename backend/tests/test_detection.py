@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import re
 
 from app.detection.pipeline import (
@@ -5,6 +6,7 @@ from app.detection.pipeline import (
     commit_findings_to_vault,
     detect_sensitive_entities,
 )
+from app.detection.presidio_detector import PresidioDetector, get_presidio_detector
 from app.detection.slm_client import OpenAICompatibleSLMDetector, should_skip_slm
 from app.models import CustomRule
 from app.vault.store import VaultData
@@ -79,3 +81,53 @@ def test_slm_short_circuit_and_verbatim_matching(monkeypatch) -> None:
     assert text[start:end] == "Orion Labs"
     assert entity_type == "COMPANY"
     assert source == "llm"
+
+
+def test_presidio_detector_mapping_filtering_and_fallback(monkeypatch) -> None:
+    @dataclass
+    class _FakeResult:
+        entity_type: str
+        start: int
+        end: int
+        score: float
+
+    text = "Contract with Sonatrach signed by Nadia Mansouri in Algiers regarding [PERSON_1a2b3c]."
+
+    class _FakeAnalyzer:
+        def analyze(self, text: str, entities: list[str], language: str, score_threshold: float):
+            assert language == "en"
+            assert "ORGANIZATION" in entities
+            return [
+                _FakeResult("ORGANIZATION", text.index("Sonatrach"), text.index("Sonatrach") + 9, 0.85),
+                _FakeResult("PERSON", text.index("Nadia Mansouri"), text.index("Nadia Mansouri") + 14, 0.91),
+                _FakeResult("LOCATION", text.index("Algiers"), text.index("Algiers") + 7, 0.72),
+                # Low-score guess below min_score must be ignored.
+                _FakeResult("PERSON", 0, 8, 0.2),
+                # Existing bracket placeholder must never be re-flagged.
+                _FakeResult("ORGANIZATION", text.index("[PERSON_1a2b3c]"), text.index("[PERSON_1a2b3c]") + 15, 0.95),
+            ]
+
+    detector = PresidioDetector(_FakeAnalyzer(), min_score=0.45)
+    vault = VaultData()
+    findings = detect_sensitive_entities(
+        text,
+        vault=vault,
+        custom_rules=[],
+        extra_detectors=[detector],
+    )
+    by_text = {f.text: f for f in findings}
+    assert by_text["Sonatrach"].type == "COMPANY"
+    assert by_text["Sonatrach"].source == "ner"
+    assert by_text["Nadia Mansouri"].type == "PERSON"
+    assert by_text["Algiers"].type == "ADDRESS"
+    assert "[PERSON_1a2b3c]" not in by_text
+    assert "Contract" not in by_text
+
+    # Graceful fallback returns None if Presidio cannot initialize.
+    import app.detection.presidio_detector as presidio_mod
+
+    presidio_mod.get_presidio_detector.cache_clear()
+    monkeypatch.setattr(presidio_mod, "_build_presidio_analyzer", lambda _model: None)
+    assert get_presidio_detector("missing_model") is None
+    presidio_mod.get_presidio_detector.cache_clear()
+
