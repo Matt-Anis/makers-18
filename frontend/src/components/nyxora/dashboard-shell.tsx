@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { NyxoraWordmark } from "@/components/nyxora/brand";
+import { LiquidBackdrop } from "@/components/nyxora/liquid-backdrop";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,8 @@ export function DashboardShell({
 
   if (loading || !user) {
     return (
-      <main className="nyxora-ambient-bg flex min-h-screen items-center justify-center p-8 text-white/60">
+      <main className="relative flex min-h-screen items-center justify-center p-8 text-white/60">
+        <LiquidBackdrop />
         <p className="text-sm">Verifying workspace session...</p>
       </main>
     );
@@ -53,13 +55,15 @@ export function DashboardShell({
   );
 
   return (
-    <div className="nyxora-ambient-bg min-h-screen text-white">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#09080f]/80 backdrop-blur-md">
+    <div className="relative min-h-screen text-white">
+      <LiquidBackdrop />
+
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07060c]/65 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-6">
-            <NyxoraWordmark href="/chat" className="text-lg drop-shadow-none sm:text-xl" />
+            <NyxoraWordmark href="/chat" className="text-lg sm:text-xl" />
 
-            <nav aria-label="Primary" className="flex flex-wrap items-center gap-1">
+            <nav aria-label="Primary" className="flex flex-wrap items-center gap-1.5">
               {visibleNav.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -68,7 +72,7 @@ export function DashboardShell({
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-150 ease-out",
+                      "rounded-full px-3.5 py-1.5 text-sm font-medium transition-[background-color,color] duration-200 ease-out",
                       isActive
                         ? "bg-white/12 text-white"
                         : "text-white/60 hover:bg-white/[0.06] hover:text-white",
@@ -88,7 +92,7 @@ export function DashboardShell({
             </div>
             <Badge
               variant="outline"
-              className="border-white/15 bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium capitalize text-white/85"
+              className="rounded-full border-white/15 bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium capitalize text-white/85"
             >
               <ShieldCheck className="mr-1 size-3 text-[#9b82ff]" aria-hidden="true" />
               {user.role}

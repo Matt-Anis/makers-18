@@ -89,7 +89,7 @@ export default function RulesPage() {
       subtitle="Manage company-specific keywords/regex patterns and inspect metadata-only audit events."
     >
       {user?.role !== "admin" ? (
-        <Alert className="nyxora-surface rounded-xl border-amber-400/35 text-amber-100">
+        <Alert className="nyxora-surface rounded-3xl border-amber-400/35 text-amber-100">
           <ShieldAlert aria-hidden="true" />
           <AlertTitle>Admin access required</AlertTitle>
           <AlertDescription className="text-amber-200/80">
@@ -98,7 +98,7 @@ export default function RulesPage() {
         </Alert>
       ) : (
         <>
-          <Card className="nyxora-surface rounded-xl border ring-0">
+          <Card className="nyxora-surface rounded-3xl border ring-0">
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="text-base font-semibold text-white">
@@ -106,7 +106,7 @@ export default function RulesPage() {
                 </CardTitle>
                 <Badge
                   variant="outline"
-                  className="border-white/12 bg-white/[0.04] text-xs text-white/65"
+                  className="rounded-full border-white/12 bg-white/[0.04] text-xs text-white/65"
                 >
                   Local preview · awaiting /rules API
                 </Badge>
@@ -130,7 +130,7 @@ export default function RulesPage() {
                     value={pattern}
                     onChange={(e) => setPattern(e.target.value)}
                     placeholder="e.g. PROJECT-ORION"
-                    className="h-9 rounded-lg border-white/12 bg-white/[0.04] px-3 font-mono text-sm text-white placeholder:text-white/35"
+                    className="h-9 rounded-full px-4 font-mono text-sm"
                   />
                 </div>
 
@@ -146,13 +146,13 @@ export default function RulesPage() {
                   >
                     <SelectTrigger
                       id="rule-type"
-                      className="h-9 w-full rounded-lg border-white/12 bg-white/[0.04] px-3 text-xs text-white"
+                      className="h-9 w-full rounded-full px-3.5 text-xs text-white"
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-white/12 bg-[#161322] text-white">
+                    <SelectContent>
                       {ENTITY_TYPES.map((item) => (
-                        <SelectItem key={item} value={item} className="text-xs">
+                        <SelectItem key={item} value={item} className="rounded-xl text-xs">
                           {item}
                         </SelectItem>
                       ))}
@@ -236,7 +236,7 @@ export default function RulesPage() {
             </CardContent>
           </Card>
 
-          <Card className="nyxora-surface rounded-xl border ring-0">
+          <Card className="nyxora-surface rounded-3xl border ring-0">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-white">
                 Metadata-only audit log

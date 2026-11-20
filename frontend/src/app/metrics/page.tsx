@@ -39,7 +39,7 @@ export default function MetricsPage() {
       title="Evaluation & Ablation Metrics"
       subtitle="Recall, precision, leak-free contract rate, layer-by-layer ablation, and unmask round-trip accuracy."
     >
-      <Alert className="nyxora-surface rounded-xl border-white/12 text-white">
+      <Alert className="nyxora-surface rounded-3xl border-white/12 text-white">
         <Info className="text-[#a78bfa]" aria-hidden="true" />
         <AlertTitle>Awaiting evaluation run</AlertTitle>
         <AlertDescription className="text-white/60">
@@ -54,7 +54,7 @@ export default function MetricsPage() {
           { label: "Leak-free contracts", value: "—", hint: "Zero missed entities" },
           { label: "Unmask round trip", value: "—", hint: "Target: 100% exact restore" },
         ].map((kpi) => (
-          <Card key={kpi.label} className="nyxora-surface rounded-xl border ring-0">
+          <Card key={kpi.label} className="nyxora-surface rounded-3xl border ring-0">
             <CardHeader className="pb-1">
               <CardDescription className="text-xs font-medium text-white/60">
                 {kpi.label}
@@ -69,18 +69,18 @@ export default function MetricsPage() {
       </div>
 
       <Tabs defaultValue="synthetic" className="space-y-4">
-        <TabsList className="rounded-lg border border-white/10 bg-white/[0.04] p-1">
-          <TabsTrigger value="synthetic" className="rounded-md px-3 text-xs">
+        <TabsList className="rounded-full border border-white/10 bg-white/[0.04] p-1">
+          <TabsTrigger value="synthetic" className="rounded-full px-4 text-xs">
             Synthetic set (50–100)
           </TabsTrigger>
-          <TabsTrigger value="realistic" className="rounded-md px-3 text-xs">
+          <TabsTrigger value="realistic" className="rounded-full px-4 text-xs">
             Realistic public set (10–20)
           </TabsTrigger>
         </TabsList>
 
         {(["synthetic", "realistic"] as const).map((tab) => (
           <TabsContent key={tab} value={tab} className="grid gap-6 lg:grid-cols-2">
-            <Card className="nyxora-surface rounded-xl border ring-0">
+            <Card className="nyxora-surface rounded-3xl border ring-0">
               <CardHeader>
                 <CardTitle className="text-base font-semibold text-white">
                   Per-entity recall &amp; precision
@@ -119,7 +119,7 @@ export default function MetricsPage() {
               </CardContent>
             </Card>
 
-            <Card className="nyxora-surface rounded-xl border ring-0">
+            <Card className="nyxora-surface rounded-3xl border ring-0">
               <CardHeader>
                 <CardTitle className="text-base font-semibold text-white">
                   Layer-by-layer ablation

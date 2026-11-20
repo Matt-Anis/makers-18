@@ -41,7 +41,7 @@ export function SessionControlBar({
   busy,
 }: SessionControlBarProps) {
   return (
-    <Card className="nyxora-surface rounded-xl border ring-0">
+    <Card className="nyxora-surface rounded-3xl border ring-0">
       <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3.5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -56,13 +56,13 @@ export function SessionControlBar({
             >
               <SelectTrigger
                 id="provider-select"
-                className="h-9 min-w-52 rounded-lg border-white/12 bg-white/[0.04] px-3 text-xs text-white transition-colors duration-150 hover:border-white/20 sm:text-sm"
+                className="h-9 min-w-52 rounded-full px-3.5 text-xs text-white sm:text-sm"
               >
                 <SelectValue placeholder="Choose provider" />
               </SelectTrigger>
-              <SelectContent className="border-white/12 bg-[#161322] text-white">
+              <SelectContent>
                 {PROVIDERS.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
+                  <SelectItem key={item.id} value={item.id} className="rounded-xl">
                     {item.label}
                   </SelectItem>
                 ))}
@@ -83,13 +83,13 @@ export function SessionControlBar({
               >
                 <SelectTrigger
                   id="session-select"
-                  className="h-9 min-w-44 rounded-lg border-white/12 bg-white/[0.04] px-3 font-mono text-xs text-white/85 transition-colors duration-150 hover:border-white/20"
+                  className="h-9 min-w-44 rounded-full px-3.5 font-mono text-xs text-white/85"
                 >
                   <SelectValue placeholder="Select session" />
                 </SelectTrigger>
-                <SelectContent className="border-white/12 bg-[#161322] text-white">
+                <SelectContent>
                   {sessions.map((item) => (
-                    <SelectItem key={item.id} value={item.id} className="font-mono text-xs">
+                    <SelectItem key={item.id} value={item.id} className="rounded-xl font-mono text-xs">
                       {item.title} ({item.id.slice(0, 8)})
                     </SelectItem>
                   ))}
@@ -99,7 +99,7 @@ export function SessionControlBar({
           ) : (
             <Badge
               variant="outline"
-              className="border-white/12 bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-white/65"
+              className="rounded-full border-white/12 bg-white/[0.04] px-3 py-1 font-mono text-[11px] text-white/65"
             >
               Starts on scan
             </Badge>

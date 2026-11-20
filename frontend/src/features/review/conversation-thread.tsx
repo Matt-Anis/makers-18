@@ -24,13 +24,13 @@ export function ConversationThread({
       {messages.map((message) => (
         <div
           key={message.id}
-          className={`rounded-xl border p-4 ${
+          className={`rounded-3xl border p-5 backdrop-blur-xl ${
             message.role === "user"
-              ? "border-white/10 bg-white/[0.03]"
-              : "border-[#7c5cff]/30 bg-[#7c5cff]/[0.08]"
+              ? "border-white/10 bg-white/[0.04]"
+              : "border-[#8b6eff]/30 bg-[#7c5cff]/[0.09]"
           }`}
         >
-          <div className="mb-1.5 text-xs font-medium text-[#a78bfa]">
+          <div className="mb-1.5 text-xs font-medium text-[#b8a5ff]">
             {message.role === "user" ? "You" : providerLabel}
           </div>
           <p className="text-sm leading-relaxed text-white/90">

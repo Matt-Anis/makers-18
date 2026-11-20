@@ -27,7 +27,7 @@ export function ContractInputCard({
   const isWorking = step === "detecting" || step === "sending";
 
   return (
-    <Card className="nyxora-surface rounded-xl border ring-0">
+    <Card className="nyxora-surface rounded-3xl border ring-0">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
         <CardTitle className="text-sm font-semibold text-white">
           Contract input &amp; local detection
@@ -37,7 +37,7 @@ export function ContractInputCard({
           variant="ghost"
           size="sm"
           onClick={() => onInputChange(SAMPLE_CONTRACT)}
-          className="h-7 cursor-pointer text-xs text-[#a78bfa] hover:text-white"
+          className="h-7 cursor-pointer text-xs text-[#b8a5ff] hover:text-white"
         >
           Load sample contract
         </Button>
@@ -54,7 +54,7 @@ export function ContractInputCard({
             value={inputText}
             onChange={(e) => onInputChange(e.target.value)}
             placeholder="Paste contract text or ask a follow-up question..."
-            className="rounded-lg border-white/12 bg-white/[0.03] p-3.5 text-sm text-white placeholder:text-white/35 transition-[border-color,background-color] duration-150 hover:border-white/20 focus-visible:border-[#8b6eff] focus-visible:ring-2 focus-visible:ring-[#8b6eff]/25"
+            className="rounded-2xl p-4"
           />
         </div>
 
@@ -62,7 +62,7 @@ export function ContractInputCard({
           <div className="flex flex-wrap items-center gap-3">
             <label
               htmlFor="contract-file-upload"
-              className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-white/12 bg-white/[0.04] px-3.5 text-xs font-medium text-white/85 transition-[background-color,border-color] duration-150 ease-out hover:border-white/20 hover:bg-white/[0.08] focus-within:ring-2 focus-within:ring-[#8b6eff]/40"
+              className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-4 text-xs font-medium text-white/85 transition-[background-color,border-color] duration-200 ease-out hover:border-white/22 hover:bg-white/[0.09] focus-within:ring-2 focus-within:ring-[#9b82ff]/40"
             >
               <Upload className="size-3.5" aria-hidden="true" />
               <span>Attach PDF / DOCX</span>
