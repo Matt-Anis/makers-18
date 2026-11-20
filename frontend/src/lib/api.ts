@@ -131,6 +131,9 @@ export interface WorkspaceSettings {
   rulebook_prompt: string;
   gpu_llm_enabled: boolean;
   gpu_llm_endpoint: string | null;
+  gpu_llm_model: string | null;
+  gpu_llm_key_configured: boolean;
+  gpu_llm_key_hint: string | null;
   updated_at: string;
 }
 

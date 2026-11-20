@@ -178,11 +178,36 @@ def test_owner_workspace_settings_and_rules_crud(api_env) -> None:
             "default_model": "nyxora-mock-v1",
             "default_thinking_effort": "high",
             "rulebook_prompt": "Always mask bank IBANs.",
-            "gpu_llm_enabled": False,
+            "gpu_llm_enabled": True,
+            "gpu_llm_endpoint": "https://pod123-8000.proxy.runpod.net/v1",
+            "gpu_llm_model": "Qwen/Qwen2.5-3B-Instruct-AWQ",
+            "gpu_llm_api_key": "rp-secret-key-9988",
         },
     )
     assert updated_ws.status_code == 200
-    assert updated_ws.json()["default_thinking_effort"] == "high"
+    ws_body = updated_ws.json()
+    assert ws_body["default_thinking_effort"] == "high"
+    assert ws_body["gpu_llm_model"] == "Qwen/Qwen2.5-3B-Instruct-AWQ"
+    assert ws_body["gpu_llm_key_configured"] is True
+    assert ws_body["gpu_llm_key_hint"].endswith("9988")
+    assert "rp-secret-key-9988" not in updated_ws.text
+
+    cleared_ws = client.put(
+        "/settings/workspace",
+        json={
+            "allow_auto_review": True,
+            "default_review_mode": "auto",
+            "default_provider": "mock",
+            "default_model": "nyxora-mock-v1",
+            "default_thinking_effort": "high",
+            "rulebook_prompt": "Always mask bank IBANs.",
+            "gpu_llm_enabled": False,
+            "clear_gpu_llm_api_key": True,
+        },
+    )
+    assert cleared_ws.status_code == 200
+    assert cleared_ws.json()["gpu_llm_key_configured"] is False
+    assert cleared_ws.json()["gpu_llm_key_hint"] is None
 
     bad_regex = client.post(
         "/rules",

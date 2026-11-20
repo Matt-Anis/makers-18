@@ -574,10 +574,15 @@ def send_session_message(
         if presidio is not None:
             extra_detectors.append(presidio)
     if settings_row.gpu_llm_enabled and settings_row.gpu_llm_endpoint:
+        slm_api_key: str | None = None
+        if settings_row.encrypted_gpu_llm_api_key:
+            slm_api_key = decrypt_secret(settings_row.encrypted_gpu_llm_api_key, get_secret_fernet())
         extra_detectors.append(
             OpenAICompatibleSLMDetector(
                 settings_row.gpu_llm_endpoint,
                 rulebook_prompt=settings_row.rulebook_prompt,
+                model=settings_row.gpu_llm_model or "Qwen/Qwen2.5-7B-Instruct-AWQ",
+                api_key=slm_api_key,
             )
         )
 
