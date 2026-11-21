@@ -92,6 +92,7 @@ export function SessionWorkspace() {
   const [sessions, setSessions] = useState<GatewaySession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [loadedSessionId, setLoadedSessionId] = useState<string | null>(null);
+  const [draftSessionTitle, setDraftSessionTitle] = useState("");
   const [sessionDrawerOpen, setSessionDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -285,11 +286,12 @@ export function SessionWorkspace() {
       const created = await apiFetch<GatewaySession>("/sessions", {
         method: "POST",
         body: JSON.stringify({
-          title: fileName ?? "Contract review",
+          title: draftSessionTitle.trim() || fileName || "Contract review",
           provider: selectedModel.provider,
         }),
       });
       skipNextLoadRef.current = created.id;
+      setDraftSessionTitle("");
       await refreshSessions();
       setLoadedSessionId(created.id);
       setActiveSessionId(created.id);
@@ -301,7 +303,23 @@ export function SessionWorkspace() {
       });
       return null;
     }
-  }, [activeSession, fileName, selectedModel.provider, refreshSessions]);
+  }, [activeSession, draftSessionTitle, fileName, selectedModel.provider, refreshSessions]);
+
+  async function handleRenameSession(sessionId: string, title: string) {
+    setStatusNotice(null);
+    try {
+      const updated = await apiFetch<GatewaySession>(`/sessions/${sessionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      });
+      setSessions((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (error) {
+      setStatusNotice({
+        tone: "error",
+        text: error instanceof ApiError ? error.message : "Could not rename session.",
+      });
+    }
+  }
 
   async function handleNewSession() {
     setSessionDrawerOpen(false);
@@ -556,12 +574,14 @@ export function SessionWorkspace() {
           onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
           onSelect={handleSelectSession}
           onNew={handleNewSession}
+          onRename={handleRenameSession}
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <SessionHeader
               session={activeSession}
+              draftTitle={draftSessionTitle}
               hasMessages={Boolean(activeSessionId && messages.length > 0)}
               busy={sessionBusy || historyLoading}
               sidebarCollapsed={sidebarCollapsed}
@@ -573,6 +593,13 @@ export function SessionWorkspace() {
               }}
               showMasked={showMasked}
               onToggleMasked={() => setShowMasked((visible) => !visible)}
+              onRename={async (nextTitle) => {
+                if (activeSession) {
+                  await handleRenameSession(activeSession.id, nextTitle);
+                } else {
+                  setDraftSessionTitle(nextTitle);
+                }
+              }}
               onEndSession={handleEndSession}
             />
 

@@ -1,13 +1,16 @@
 "use client";
 
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import {
   ChartNoAxesColumn,
+  Check,
   LogOut,
-  MessageSquare,
   PanelLeftClose,
+  Pencil,
   Plus,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,6 +18,7 @@ import { useAuth } from "@/components/auth-provider";
 import { NyxoraWordmark } from "@/components/nyxora/brand";
 import { Button } from "@/components/ui/button";
 import type { GatewaySession } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/relative-time";
 
 export function SessionSidebar({
   sessions,
@@ -24,6 +28,7 @@ export function SessionSidebar({
   onToggleCollapse,
   onSelect,
   onNew,
+  onRename,
 }: {
   sessions: GatewaySession[];
   activeSessionId: string | null;
@@ -32,14 +37,71 @@ export function SessionSidebar({
   onToggleCollapse: () => void;
   onSelect: (id: string) => void;
   onNew: () => void;
+  onRename: (sessionId: string, title: string) => Promise<void>;
 }) {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const name = user?.full_name || user?.email || "";
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [savingRename, setSavingRename] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   async function handleSignOut() {
     await signOut();
     router.replace("/login");
+  }
+
+  function startEditing(session: GatewaySession) {
+    setEditingId(session.id);
+    setDraftTitle(session.title);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setDraftTitle("");
+  }
+
+  async function commitRename(session: GatewaySession) {
+    const trimmed = draftTitle.trim();
+    if (!trimmed || trimmed === session.title) {
+      cancelEditing();
+      return;
+    }
+    setSavingRename(true);
+    try {
+      await onRename(session.id, trimmed);
+      setEditingId(null);
+      setDraftTitle("");
+    } finally {
+      setSavingRename(false);
+    }
+  }
+
+  function handleRenameKeyDown(event: KeyboardEvent<HTMLInputElement>, session: GatewaySession) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEditing();
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (event.nativeEvent.isComposing || event.keyCode === 229) {
+        return;
+      }
+      void commitRename(session);
+    }
   }
 
   const body = (
@@ -68,22 +130,95 @@ export function SessionSidebar({
           <ul className="space-y-0.5">
             {sessions.map((session) => {
               const isActive = session.id === activeSessionId;
+              const isEditing = editingId === session.id;
+              const relativeTime = formatRelativeTime(
+                session.updated_at || session.created_at,
+                nowMs,
+              );
+
+              if (isEditing) {
+                return (
+                  <li key={session.id} className="px-1 py-0.5">
+                    <div className="flex items-center gap-1 rounded-control border border-ring bg-sidebar-accent px-2 py-1">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        aria-label="Rename session"
+                        maxLength={160}
+                        disabled={savingRename}
+                        value={draftTitle}
+                        onChange={(e) => setDraftTitle(e.target.value)}
+                        onKeyDown={(e) => handleRenameKeyDown(e, session)}
+                        className="min-w-0 flex-1 bg-transparent text-sm text-sidebar-foreground outline-none"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        disabled={savingRename}
+                        aria-label="Save name"
+                        onClick={() => void commitRename(session)}
+                        className="cursor-pointer text-highlight hover:text-highlight"
+                      >
+                        <Check className="size-3.5" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        disabled={savingRename}
+                        aria-label="Cancel rename"
+                        onClick={cancelEditing}
+                        className="cursor-pointer text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </li>
+                );
+              }
+
               return (
-                <li key={session.id}>
+                <li key={session.id} className="group relative">
                   <button
                     type="button"
                     disabled={busy}
                     aria-current={isActive ? "true" : undefined}
                     onClick={() => onSelect(session.id)}
                     title={session.title}
-                    className="group flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-control px-2.5 text-left text-sm text-muted-foreground outline-none transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:opacity-50 aria-[current=true]:bg-sidebar-accent aria-[current=true]:font-medium aria-[current=true]:text-sidebar-foreground lg:min-h-9"
+                    className="flex w-full cursor-pointer flex-col items-start rounded-control px-2.5 py-2 pr-8 text-left outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:opacity-50 aria-[current=true]:bg-sidebar-accent"
                   >
-                    <MessageSquare
-                      className="size-3.5 shrink-0 opacity-60 group-aria-[current=true]:text-highlight group-aria-[current=true]:opacity-100"
-                      aria-hidden="true"
-                    />
-                    <span className="truncate">{session.title}</span>
+                    <span
+                      className={`w-full truncate text-sm ${
+                        isActive
+                          ? "font-medium text-sidebar-foreground"
+                          : "text-muted-foreground group-hover:text-sidebar-foreground"
+                      }`}
+                    >
+                      {session.title}
+                    </span>
+                    {relativeTime ? (
+                      <span className="mt-0.5 text-[11px] text-muted-foreground/80">
+                        {relativeTime}
+                      </span>
+                    ) : null}
                   </button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    disabled={busy}
+                    aria-label={`Rename ${session.title}`}
+                    title="Rename chat"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditing(session);
+                    }}
+                    className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <Pencil className="size-3" aria-hidden="true" />
+                  </Button>
                 </li>
               );
             })}
@@ -126,7 +261,10 @@ export function SessionSidebar({
             {name.trim().charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium leading-tight text-sidebar-foreground" title={user?.email}>
+            <p
+              className="truncate text-sm font-medium leading-tight text-sidebar-foreground"
+              title={user?.email}
+            >
               {name}
             </p>
             <p className="truncate text-[11px] capitalize text-muted-foreground">

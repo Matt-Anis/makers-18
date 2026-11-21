@@ -1,16 +1,27 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
-import { Ellipsis, Eye, EyeOff, PanelLeft, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  Check,
+  Ellipsis,
+  Eye,
+  EyeOff,
+  PanelLeft,
+  Pencil,
+  ShieldCheck,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GatewaySession } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function SessionHeader({
   session,
+  draftTitle,
   hasMessages,
   busy,
   sidebarCollapsed,
@@ -19,9 +30,11 @@ export function SessionHeader({
   onToggleInspector,
   showMasked,
   onToggleMasked,
+  onRename,
   onEndSession,
 }: {
   session: GatewaySession | null;
+  draftTitle: string;
   hasMessages: boolean;
   busy: boolean;
   sidebarCollapsed: boolean;
@@ -30,15 +43,65 @@ export function SessionHeader({
   onToggleInspector: () => void;
   showMasked: boolean;
   onToggleMasked: () => void;
+  onRename: (title: string) => Promise<void>;
   onEndSession: () => void;
 }) {
   const [confirmWipe, setConfirmWipe] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
   const menuTrigger = useRef<HTMLButtonElement>(null);
-  const title = session?.title ?? "New session";
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const title = session?.title ?? (draftTitle.trim() || "New session");
+
+  function startEditing() {
+    setTitleInput(session?.title ?? draftTitle);
+    setEditingTitle(true);
+    requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    });
+  }
+
+  function cancelEditing() {
+    setEditingTitle(false);
+    setTitleInput("");
+  }
+
+  async function commitRename() {
+    const trimmed = titleInput.trim();
+    if (!trimmed || trimmed === title) {
+      cancelEditing();
+      return;
+    }
+    setSavingTitle(true);
+    try {
+      await onRename(trimmed);
+      setEditingTitle(false);
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
+  function handleTitleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEditing();
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (event.nativeEvent.isComposing || event.keyCode === 229) {
+        return;
+      }
+      void commitRename();
+    }
+  }
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-background/90 px-3 backdrop-blur-md sm:px-4">
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <Dialog.Trigger
           aria-label="Open sessions"
           render={
@@ -67,9 +130,58 @@ export function SessionHeader({
           </Button>
         ) : null}
 
-        <h1 className="min-w-0 truncate text-sm font-medium text-foreground" title={title}>
-          {title}
-        </h1>
+        {editingTitle ? (
+          <div className="flex min-w-0 max-w-sm flex-1 items-center gap-1 rounded-control border border-ring bg-card px-2 py-1">
+            <input
+              ref={titleInputRef}
+              type="text"
+              aria-label="Chat name"
+              maxLength={160}
+              disabled={savingTitle}
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onKeyDown={handleTitleKeyDown}
+              placeholder="Name this chat…"
+              className="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              disabled={savingTitle}
+              aria-label="Save chat name"
+              onClick={() => void commitRename()}
+              className="cursor-pointer text-highlight hover:text-highlight"
+            >
+              <Check className="size-3.5" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              disabled={savingTitle}
+              aria-label="Cancel rename"
+              onClick={cancelEditing}
+              className="cursor-pointer text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={startEditing}
+            title="Click to name or rename chat"
+            className="group flex min-w-0 max-w-md cursor-pointer items-center gap-1.5 rounded-control px-2 py-1 text-left transition-colors hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+          >
+            <h1 className="min-w-0 truncate text-sm font-medium text-foreground">{title}</h1>
+            <Pencil
+              className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              aria-hidden="true"
+            />
+          </button>
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
@@ -83,7 +195,8 @@ export function SessionHeader({
             onClick={onToggleMasked}
             className={cn(
               "h-8 cursor-pointer gap-1.5 px-2.5 text-xs text-muted-foreground hover:text-foreground",
-              showMasked && "border border-highlight/30 bg-accent text-highlight hover:bg-accent/80 hover:text-highlight",
+              showMasked &&
+                "border border-highlight/30 bg-accent text-highlight hover:bg-accent/80 hover:text-highlight",
             )}
           >
             {showMasked ? (
@@ -106,7 +219,8 @@ export function SessionHeader({
           onClick={onToggleInspector}
           className={cn(
             "h-8 cursor-pointer gap-1.5 px-2.5 text-xs text-muted-foreground hover:text-foreground",
-            inspectorOpen && "border border-highlight/30 bg-accent text-highlight hover:bg-accent/80 hover:text-highlight",
+            inspectorOpen &&
+              "border border-highlight/30 bg-accent text-highlight hover:bg-accent/80 hover:text-highlight",
           )}
         >
           <ShieldCheck className="size-3.5" aria-hidden="true" />
@@ -133,6 +247,14 @@ export function SessionHeader({
             <Menu.Portal>
               <Menu.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
                 <Menu.Popup className="min-w-48 rounded-surface border border-border bg-popover p-1 text-popover-foreground shadow-xl outline-none">
+                  <Menu.Item
+                    disabled={busy}
+                    onClick={startEditing}
+                    className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-control px-2.5 py-1.5 text-xs outline-none data-[highlighted]:bg-sidebar-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-45"
+                  >
+                    <Pencil className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <span>Rename chat</span>
+                  </Menu.Item>
                   <Menu.Item
                     onClick={onToggleMasked}
                     className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-control px-2.5 py-1.5 text-xs outline-none data-[highlighted]:bg-sidebar-accent"
@@ -174,7 +296,9 @@ export function SessionHeader({
               This permanently removes this conversation and destroys its encrypted vault mappings.
             </AlertDialog.Description>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <AlertDialog.Close render={<Button type="button" variant="outline" className="cursor-pointer" />}>
+              <AlertDialog.Close
+                render={<Button type="button" variant="outline" className="cursor-pointer" />}
+              >
                 Cancel
               </AlertDialog.Close>
               <AlertDialog.Close
