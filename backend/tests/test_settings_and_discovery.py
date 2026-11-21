@@ -348,3 +348,70 @@ def test_gpu_probe_draft_discovery_and_user_status_toggle(
     reactivate_member = client.patch(f"/auth/users/{member_row['id']}", json={"is_active": True})
     assert reactivate_member.status_code == 200
     assert reactivate_member.json()["is_active"] is True
+
+
+def test_openai_compatible_fallback_discovery_and_disabled_filtering(
+    api_env,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _sf = api_env
+    _login(client, "owner@acme.local", "owner-secret-123")
+
+    # Disabled openai_compatible provider must not leak its models into /providers/models.
+    disabled_save = client.put(
+        "/settings/providers/openai_compatible",
+        json={
+            "api_key": "sk-custom-1234",
+            "base_url": "https://custom.example/v1",
+            "enabled": False,
+            "enabled_models": ["custom-model-1"],
+        },
+    )
+    assert disabled_save.status_code == 200
+    models_while_disabled = client.get("/providers/models").json()["models"]
+    assert all(m["provider"] != "openai_compatible" for m in models_while_disabled)
+
+    # Enabled openai_compatible with empty enabled_models falls back to live /models discovery.
+    live_calls = 0
+
+    class _FakeModelsResp:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {"data": [{"id": "claude-sonnet-4-6"}, {"id": "claude-opus-4-6"}]}
+
+    def _fake_get(*_args, **_kwargs):
+        nonlocal live_calls
+        live_calls += 1
+        return _FakeModelsResp()
+
+    monkeypatch.setattr(discovery_module.httpx, "get", _fake_get)
+    enabled_empty_save = client.put(
+        "/settings/providers/openai_compatible",
+        json={
+            "base_url": "https://custom.example/v1",
+            "enabled": True,
+            "enabled_models": [],
+        },
+    )
+    assert enabled_empty_save.status_code == 200
+    discovered = client.get("/providers/models").json()["models"]
+    custom_ids = [m["model_id"] for m in discovered if m["provider"] == "openai_compatible"]
+    assert custom_ids == ["claude-sonnet-4-6", "claude-opus-4-6"]
+    assert live_calls == 1
+
+    # When explicit enabled_models are saved, /providers/models uses them directly without live probing.
+    enabled_explicit_save = client.put(
+        "/settings/providers/openai_compatible",
+        json={
+            "base_url": "https://custom.example/v1",
+            "enabled": True,
+            "enabled_models": ["custom-model-1"],
+        },
+    )
+    assert enabled_explicit_save.status_code == 200
+    explicit_models = client.get("/providers/models").json()["models"]
+    explicit_ids = [m["model_id"] for m in explicit_models if m["provider"] == "openai_compatible"]
+    assert explicit_ids == ["custom-model-1"]
+    assert live_calls == 1
