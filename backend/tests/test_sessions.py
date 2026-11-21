@@ -258,3 +258,31 @@ def test_session_inspector_ownership_index_and_wipe(session_env) -> None:
     assert wiped_data["snapshot_persisted"] is False
     assert wiped_data["entry_count"] == 0
     assert wiped_data["cipher_preview"] is None
+
+
+def test_rename_gateway_session_ownership_and_validation(session_env) -> None:
+    client, _vault_store, _session_factory = session_env
+    _login(client, "anis@acme.local", "anis-secret-123")
+
+    created = client.post("/sessions", json={"provider": "mock", "title": "Draft NDA"})
+    assert created.status_code == 201
+    session_id = created.json()["id"]
+
+    # Another user cannot rename Anis's session.
+    _login(client, "samira@acme.local", "samira-secret-123")
+    assert client.patch(f"/sessions/{session_id}", json={"title": "Hijacked"}).status_code == 404
+
+    # Owner can rename with trimmed title, blank titles are rejected.
+    _login(client, "anis@acme.local", "anis-secret-123")
+    assert client.patch(f"/sessions/{session_id}", json={"title": "   "}).status_code == 422
+
+    renamed = client.patch(f"/sessions/{session_id}", json={"title": "  Q4 Vendor MSA  "})
+    assert renamed.status_code == 200
+    assert renamed.json()["title"] == "Q4 Vendor MSA"
+
+    listed = client.get("/sessions").json()
+    assert listed[0]["title"] == "Q4 Vendor MSA"
+
+    # Ended sessions cannot be renamed.
+    assert client.delete(f"/sessions/{session_id}").status_code == 200
+    assert client.patch(f"/sessions/{session_id}", json={"title": "After Wipe"}).status_code == 400

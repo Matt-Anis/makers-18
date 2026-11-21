@@ -21,6 +21,20 @@ class CreateGatewaySessionRequest(BaseModel):
         return cleaned
 
 
+class UpdateGatewaySessionRequest(BaseModel):
+    """Payload to rename an existing gateway session."""
+
+    title: str = Field(min_length=1, max_length=160)
+
+    @field_validator("title")
+    @classmethod
+    def strip_title(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Title must not be blank")
+        return cleaned
+
+
 class MaskedMessageOut(BaseModel):
     """Chat message returned for session recovery (unmasked on the fly when vault exists)."""
 
