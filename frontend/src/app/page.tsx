@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NyxoraWordmark } from "@/components/nyxora/brand";
+import { GatewayDiagram } from "@/components/nyxora/gateway-diagram";
 import { LandingNav } from "@/components/nyxora/landing-nav";
 import { SendGatePreview } from "@/components/nyxora/send-gate-preview";
 
@@ -9,24 +10,6 @@ export const metadata: Metadata = {
   description:
     "Review contracts with external AI. NYXORA masks sensitive details, lets you review what goes out, and restores names in your workspace.",
 };
-
-const STEPS = [
-  {
-    title: "Masked on your server",
-    description:
-      "Names, companies, emails, IDs and the terms in your rulebook are swapped for placeholders before anything is sent.",
-  },
-  {
-    title: "Approved by a person",
-    description:
-      "In manual review, the masked prompt waits at the Send Gate. You approve it or reject it. Nothing goes out on its own.",
-  },
-  {
-    title: "Restored in your reply",
-    description:
-      "The model answers using placeholders. NYXORA puts the real details back from the session's encrypted vault.",
-  },
-] as const;
 
 const RULEBOOK = [
   { term: "Project Halcyon", type: "Custom term" },
@@ -84,19 +67,14 @@ export default function LandingPage() {
         <section id="how-it-works" aria-labelledby="workflow-title" className="scroll-mt-16 border-b border-border">
           <div className={`${container} py-20 lg:py-24`}>
             <h2 id="workflow-title" className="max-w-2xl font-serif text-3xl leading-tight tracking-[-0.01em] sm:text-4xl">
-              Three steps between your contract and the model.
+              What happens to a prompt, step by step.
             </h2>
-            <ol className="mt-12 grid gap-10 md:grid-cols-3 md:gap-10 lg:gap-14">
-              {STEPS.map(({ title, description }, index) => (
-                <li key={title} className="border-t border-border pt-5">
-                  <span className="font-serif text-2xl text-muted-foreground italic" aria-hidden="true">
-                    {index + 1}.
-                  </span>
-                  <h3 className="mt-3 text-base font-semibold">{title}</h3>
-                  <p className="mt-2 leading-relaxed text-muted-foreground">{description}</p>
-                </li>
-              ))}
-            </ol>
+            <p className="mt-3 max-w-xl leading-relaxed text-muted-foreground">
+              Pick a step to see how your data is protected there, and what your team gets out of it.
+            </p>
+            <div className="mt-12">
+              <GatewayDiagram />
+            </div>
           </div>
         </section>
 
