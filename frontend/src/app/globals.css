@@ -60,6 +60,9 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
   .nyxora-orb-1 {
     animation: nyxoraOrbDrift1 16s ease-in-out infinite alternate;
   }
