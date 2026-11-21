@@ -778,7 +778,7 @@ export function SessionWorkspace() {
         }}
       >
         <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-50 bg-background/75 backdrop-blur-xs xl:hidden" />
+          <Dialog.Backdrop className="fixed inset-0 z-50 bg-background/60 backdrop-blur-md xl:hidden" />
           <Dialog.Popup
             id="privacy-inspector"
             className="fixed inset-y-0 right-0 z-50 flex w-[min(25rem,92vw)] flex-col border-l border-border bg-sidebar shadow-2xl outline-none xl:hidden"

@@ -353,7 +353,7 @@ export function SessionSidebar({
       ) : null}
 
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-background/75 backdrop-blur-xs lg:hidden" />
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-background/60 backdrop-blur-md lg:hidden" />
         <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-[min(17.5rem,88vw)] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl outline-none lg:hidden">
           <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border px-3.5">
             <Dialog.Title className="sr-only">Sessions</Dialog.Title>
