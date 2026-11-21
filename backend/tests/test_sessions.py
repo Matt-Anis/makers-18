@@ -188,3 +188,73 @@ def test_persistent_vault_recovers_after_redis_cache_eviction(session_env) -> No
     body = detail.json()
     assert body["vault_active"] is True
     assert body["masked_messages"][0]["unmasked_content"] == "Please review Karim's NDA."
+
+
+def test_session_inspector_ownership_index_and_wipe(session_env) -> None:
+    client, vault_store, session_factory = session_env
+    _login(client, "anis@acme.local", "anis-secret-123")
+    session_id = client.post("/sessions", json={"provider": "mock", "title": "Demo MSA"}).json()["id"]
+
+    from app.models import MaskedMessage
+    from app.vault.store import save_session_vault
+
+    vault = vault_store.load(session_id)
+    assert vault is not None
+    person_tok = vault.assign_placeholder("PERSON", "Karim Benali")
+    company_tok = vault.assign_placeholder("COMPANY", "Atlas Tech SARL")
+
+    with session_factory() as db:
+        save_session_vault(db, vault_store, session_id, vault, ttl_seconds=60, ephemeral_only=False)
+        db.add_all(
+            [
+                MaskedMessage(
+                    gateway_session_id=session_id,
+                    role="user",
+                    masked_content=f"Review {company_tok} contract signed by {person_tok}.",
+                ),
+                MaskedMessage(
+                    gateway_session_id=session_id,
+                    role="assistant",
+                    masked_content=f"Key clauses for {person_tok} and {company_tok} reviewed ({person_tok} owes notice).",
+                ),
+            ]
+        )
+        db.commit()
+
+    # Another user cannot inspect Anis's vault.
+    _login(client, "samira@acme.local", "samira-secret-123")
+    assert client.get(f"/sessions/{session_id}/inspector").status_code == 404
+
+    # Session owner sees indexed tokens, occurrence counts, and Fernet ciphertext proof.
+    _login(client, "anis@acme.local", "anis-secret-123")
+    inspector = client.get(f"/sessions/{session_id}/inspector")
+    assert inspector.status_code == 200
+    data = inspector.json()
+    assert data["vault_active"] is True
+    assert data["redis_cached"] is True
+    assert data["snapshot_persisted"] is True
+    assert data["entry_count"] == 2
+    assert data["cipher_preview"] is not None
+    assert data["cipher_preview"].startswith("gAAAAAB")
+    assert "Karim Benali" not in data["cipher_preview"]
+    assert data["cipher_bytes"] > 64
+
+    by_token = {e["placeholder"]: e for e in data["entries"]}
+    assert by_token[person_tok]["index"] == 1
+    assert by_token[person_tok]["entity_type"] == "PERSON"
+    assert by_token[person_tok]["original_value"] == "Karim Benali"
+    assert by_token[person_tok]["occurrences"] == 3
+    assert by_token[company_tok]["index"] == 2
+    assert by_token[company_tok]["occurrences"] == 2
+    assert len(data["messages"]) == 2
+
+    # After wiping the session, vault entries and ciphertext are gone.
+    assert client.delete(f"/sessions/{session_id}").status_code == 200
+    wiped = client.get(f"/sessions/{session_id}/inspector")
+    assert wiped.status_code == 200
+    wiped_data = wiped.json()
+    assert wiped_data["vault_active"] is False
+    assert wiped_data["redis_cached"] is False
+    assert wiped_data["snapshot_persisted"] is False
+    assert wiped_data["entry_count"] == 0
+    assert wiped_data["cipher_preview"] is None
