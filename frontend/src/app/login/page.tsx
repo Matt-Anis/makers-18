@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { NyxoraWordmark } from "@/components/nyxora/brand";
+import { LiquidBackdrop } from "@/components/nyxora/liquid-backdrop";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,100 +51,104 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 py-12 text-white">
-      <NyxoraWordmark href="/" className="mb-8 text-2xl sm:text-3xl" />
+    <main className="relative flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-12 text-foreground">
+      <LiquidBackdrop />
+      <div className="relative z-10 flex w-full max-w-md flex-col items-center">
+        <NyxoraWordmark href="/" className="mb-8 text-2xl sm:text-3xl" />
 
-      <Card className="nyxora-surface w-full max-w-md gap-6 rounded-3xl border p-6 ring-0 sm:p-8">
-        <CardHeader className="p-0 text-center">
-          <CardTitle id="signin-heading" className="text-xl font-semibold text-white sm:text-2xl">
-            Sign in
-          </CardTitle>
-          <CardDescription className="mt-1 text-sm text-white/60">
-            Access your private contract workspace
-          </CardDescription>
-        </CardHeader>
+        <Card className="nyxora-surface w-full gap-6 p-6 sm:p-8">
+          <CardHeader className="p-0 text-center">
+            <CardTitle id="signin-heading" className="text-xl font-semibold text-foreground sm:text-2xl">
+              Sign in
+            </CardTitle>
+            <CardDescription className="mt-1 text-sm text-muted-foreground">
+              Access your private contract workspace
+            </CardDescription>
+          </CardHeader>
 
-        <CardContent className="p-0">
-          <form onSubmit={handleSubmit} aria-labelledby="signin-heading" className="space-y-4">
-            {errorMessage ? (
-              <Alert
-                variant="destructive"
-                className="rounded-2xl border-red-500/35 bg-red-500/10 text-red-200"
-              >
-                <AlertCircle aria-hidden="true" />
-                <AlertDescription className="text-red-200">{errorMessage}</AlertDescription>
-              </Alert>
-            ) : null}
-
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-white/85">
-                Email
-              </Label>
-              <Input
-                ref={emailRef}
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="username"
-                spellCheck={false}
-                autoCapitalize="none"
-                enterKeyHint="next"
-                required
-                aria-invalid={Boolean(errorMessage)}
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errorMessage) setErrorMessage(null);
-                }}
-                placeholder="you@company.com"
-                className="h-11 rounded-2xl px-4"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium text-white/85">
-                  Password
-                </Label>
-                <button
-                  type="button"
-                  aria-pressed={showPassword}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="cursor-pointer rounded-full px-2 py-0.5 text-xs font-medium text-white/60 transition-colors duration-200 hover:text-white"
+          <CardContent className="p-0">
+            <form onSubmit={handleSubmit} aria-labelledby="signin-heading" className="space-y-4">
+              {errorMessage ? (
+                <Alert
+                  variant="destructive"
+                  className="rounded-control border-destructive/35 bg-destructive/10 text-destructive-foreground"
                 >
-                  {showPassword ? "Hide" : "Show"}
-                </button>
-              </div>
-              <Input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                enterKeyHint="done"
-                required
-                minLength={8}
-                aria-invalid={Boolean(errorMessage)}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errorMessage) setErrorMessage(null);
-                }}
-                placeholder="••••••••"
-                className="h-11 rounded-2xl px-4"
-              />
-            </div>
+                  <AlertCircle aria-hidden="true" />
+                  <AlertDescription className="text-destructive-foreground">{errorMessage}</AlertDescription>
+                </Alert>
+              ) : null}
 
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="mt-2 h-11 w-full cursor-pointer rounded-full bg-white text-sm font-semibold text-zinc-950 hover:bg-white/90"
-            >
-              {submitting ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                  Email
+                </Label>
+                <Input
+                  ref={emailRef}
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="username"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  enterKeyHint="next"
+                  required
+                  aria-invalid={Boolean(errorMessage)}
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  placeholder="you@company.com"
+                  className="h-11 px-3.5"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                    Password
+                  </Label>
+                  <button
+                    type="button"
+                    aria-pressed={showPassword}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="cursor-pointer rounded-control px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  enterKeyHint="done"
+                  required
+                  minLength={8}
+                  aria-invalid={Boolean(errorMessage)}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  placeholder="••••••••"
+                  className="h-11 px-3.5"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                variant="highlight"
+                disabled={submitting}
+                className="mt-2 h-11 w-full cursor-pointer text-sm font-semibold"
+              >
+                {submitting ? "Signing in..." : "Sign in"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }

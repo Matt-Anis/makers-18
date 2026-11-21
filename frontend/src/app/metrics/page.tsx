@@ -97,7 +97,7 @@ export default function MetricsPage() {
         aria-live="polite"
         className={
           statusMessage
-            ? "rounded-2xl border border-[#9b82ff]/40 bg-[#7c5cff]/15 px-4 py-2.5 text-sm text-white"
+            ? "rounded-control border border-highlight/35 bg-accent/60 px-4 py-2.5 text-sm text-foreground"
             : "sr-only"
         }
       >
@@ -105,26 +105,26 @@ export default function MetricsPage() {
       </div>
 
       {!isOwner ? (
-        <Alert className="nyxora-surface rounded-3xl border-amber-400/35 text-amber-100">
+        <Alert className="nyxora-surface border-warning/35 text-warning">
           <ShieldAlert aria-hidden="true" />
           <AlertTitle>Owner access required</AlertTitle>
-          <AlertDescription className="text-amber-200/80">
+          <AlertDescription className="text-muted-foreground">
             Evaluation benchmarks are restricted to the workspace Owner.
           </AlertDescription>
         </Alert>
       ) : (
         <>
-          <Card className="nyxora-surface rounded-3xl border ring-0">
+          <Card className="nyxora-surface">
             <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-white">
+                  <span className="text-sm font-semibold text-foreground">
                     {report?.has_run ? "Latest benchmark snapshot" : "Ready to run benchmark"}
                   </span>
                   {report?.has_run ? (
                     <Badge
                       variant="outline"
-                      className="rounded-full border-emerald-400/40 bg-emerald-500/15 text-[11px] text-emerald-200"
+                      className="border-success/35 bg-success/10 text-[11px] text-success"
                     >
                       <CheckCircle2 className="mr-1 size-3" aria-hidden="true" />
                       {report.duration_ms}ms
@@ -133,7 +133,7 @@ export default function MetricsPage() {
                   {report?.presidio_active ? (
                     <Badge
                       variant="outline"
-                      className="rounded-full border-[#9b82ff]/40 bg-[#7c5cff]/15 text-[11px] text-[#d6cbff]"
+                      className="border-highlight/35 bg-accent text-[11px] text-highlight"
                     >
                       Presidio + spaCy active
                     </Badge>
@@ -141,13 +141,13 @@ export default function MetricsPage() {
                   {report?.gpu_slm_active ? (
                     <Badge
                       variant="outline"
-                      className="rounded-full border-emerald-400/40 bg-emerald-500/15 text-[11px] text-emerald-200"
+                      className="border-success/35 bg-success/10 text-[11px] text-success"
                     >
                       GPU SLM evaluated
                     </Badge>
                   ) : null}
                 </div>
-                <p className="text-xs text-white/60">
+                <p className="text-xs text-muted-foreground">
                   {report?.has_run && report.created_at
                     ? `Last run: ${new Date(report.created_at).toLocaleString()} · Evaluates your live detection pipeline, active custom rules, and VaultData unmask round-trip.`
                     : "Runs 60 synthetic + 14 realistic labeled contract snippets against your active rules and detection layers."}
@@ -165,7 +165,7 @@ export default function MetricsPage() {
                   <Label
                     htmlFor="eval-include-gpu"
                     className={`text-xs ${
-                      report?.gpu_slm_configured ? "text-white/85" : "text-white/45"
+                      report?.gpu_slm_configured ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
                     Include GPU SLM
@@ -174,9 +174,10 @@ export default function MetricsPage() {
 
                 <Button
                   type="button"
+                  variant="highlight"
                   disabled={running || loading}
                   onClick={handleRunEvaluation}
-                  className="h-9 cursor-pointer bg-white px-4 text-xs font-semibold text-zinc-950 hover:bg-white/90"
+                  className="h-9 cursor-pointer px-4 text-xs font-semibold"
                 >
                   {running ? (
                     <>
@@ -195,11 +196,11 @@ export default function MetricsPage() {
           </Card>
 
           {!loading && !report?.has_run ? (
-            <Alert className="nyxora-surface rounded-3xl border-white/12 text-white">
-              <Info className="text-[#a78bfa]" aria-hidden="true" />
+            <Alert className="nyxora-surface border-border text-foreground">
+              <Info className="text-highlight" aria-hidden="true" />
               <AlertTitle>No evaluation run saved yet</AlertTitle>
-              <AlertDescription className="text-white/60">
-                Click <strong className="text-white">Run benchmark</strong> above to execute
+              <AlertDescription className="text-muted-foreground">
+                Click <strong className="text-foreground">Run benchmark</strong> above to execute
                 NYXORA&apos;s live detection and unmasking pipeline across both contract suites and
                 persist results to SQLite.
               </AlertDescription>
@@ -235,16 +236,16 @@ export default function MetricsPage() {
                 hint: "Target: 100% exact VaultData restore",
               },
             ].map((kpi) => (
-              <Card key={kpi.label} className="nyxora-surface rounded-3xl border ring-0">
+              <Card key={kpi.label} className="nyxora-surface">
                 <CardHeader className="pb-1">
-                  <CardDescription className="text-xs font-medium text-white/60">
+                  <CardDescription className="text-xs font-medium text-muted-foreground">
                     {kpi.label}
                   </CardDescription>
-                  <CardTitle className="font-mono text-2xl font-semibold text-white">
+                  <CardTitle className="font-mono text-2xl font-semibold text-foreground">
                     {kpi.value}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-xs text-white/50">{kpi.hint}</CardContent>
+                <CardContent className="text-xs text-muted-foreground">{kpi.hint}</CardContent>
               </Card>
             ))}
           </div>
@@ -256,11 +257,11 @@ export default function MetricsPage() {
             }}
             className="space-y-4"
           >
-            <TabsList className="rounded-full border border-white/10 bg-white/[0.04] p-1">
-              <TabsTrigger value="realistic" className="rounded-full px-4 text-xs">
+            <TabsList>
+              <TabsTrigger value="realistic" className="px-4 text-xs">
                 Realistic set ({report?.realistic?.document_count ?? 14})
               </TabsTrigger>
-              <TabsTrigger value="synthetic" className="rounded-full px-4 text-xs">
+              <TabsTrigger value="synthetic" className="px-4 text-xs">
                 Synthetic set ({report?.synthetic?.document_count ?? 60})
               </TabsTrigger>
             </TabsList>
@@ -269,15 +270,15 @@ export default function MetricsPage() {
               const dataset = tab === "synthetic" ? report?.synthetic : report?.realistic;
               return (
                 <TabsContent key={tab} value={tab} className="grid gap-6 lg:grid-cols-2">
-                  <Card className="nyxora-surface rounded-3xl border ring-0">
+                  <Card className="nyxora-surface">
                     <CardHeader>
                       <CardTitle
                         id={`entity-table-heading-${tab}`}
-                        className="text-base font-semibold text-white"
+                        className="text-base font-semibold text-foreground"
                       >
                         Per-entity recall &amp; precision
                       </CardTitle>
-                      <CardDescription className="text-white/60">
+                      <CardDescription className="text-muted-foreground">
                         {tab === "synthetic"
                           ? "Exact labels generated from contract templates (tends to overestimate real-world recall)."
                           : "Hand-labeled realistic contract clauses (honest benchmark including unseen names/companies)."}
@@ -288,29 +289,29 @@ export default function MetricsPage() {
                         tabIndex={0}
                         role="region"
                         aria-labelledby={`entity-table-heading-${tab}`}
-                        className="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b82ff]"
+                        className="overflow-x-auto rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         <Table>
                           <TableHeader>
-                            <TableRow className="border-white/10 hover:bg-transparent">
-                              <TableHead className="text-xs text-white/55">Entity</TableHead>
-                              <TableHead className="text-right text-xs text-white/55">
+                            <TableRow className="border-border hover:bg-transparent">
+                              <TableHead className="text-xs text-muted-foreground">Entity</TableHead>
+                              <TableHead className="text-right text-xs text-muted-foreground">
                                 Recall
                               </TableHead>
-                              <TableHead className="text-right text-xs text-white/55">
+                              <TableHead className="text-right text-xs text-muted-foreground">
                                 Precision
                               </TableHead>
-                              <TableHead className="text-right text-xs text-white/55">
+                              <TableHead className="text-right text-xs text-muted-foreground">
                                 Support
                               </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {(dataset?.per_entity ?? []).length === 0 ? (
-                              <TableRow className="border-white/[0.07]">
+                              <TableRow className="border-border/60">
                                 <TableCell
                                   colSpan={4}
-                                  className="py-6 text-center text-xs text-white/50"
+                                  className="py-6 text-center text-xs text-muted-foreground"
                                 >
                                   Run benchmark to populate per-entity metrics.
                                 </TableCell>
@@ -319,18 +320,18 @@ export default function MetricsPage() {
                               dataset!.per_entity.map((row) => (
                                 <TableRow
                                   key={row.type}
-                                  className="border-white/[0.07] hover:bg-white/[0.03]"
+                                  className="border-border/60 hover:bg-secondary/40"
                                 >
                                   <TableCell>
                                     <EntityBadge entityType={row.type} />
                                   </TableCell>
-                                  <TableCell className="text-right font-mono text-xs text-white/85">
+                                  <TableCell className="text-right font-mono text-xs text-foreground">
                                     {formatPct(row.recall)}
                                   </TableCell>
-                                  <TableCell className="text-right font-mono text-xs text-white/85">
+                                  <TableCell className="text-right font-mono text-xs text-foreground">
                                     {formatPct(row.precision)}
                                   </TableCell>
-                                  <TableCell className="text-right font-mono text-xs text-white/55">
+                                  <TableCell className="text-right font-mono text-xs text-muted-foreground">
                                     {row.tp}/{row.support}
                                   </TableCell>
                                 </TableRow>
@@ -342,18 +343,18 @@ export default function MetricsPage() {
                     </CardContent>
                   </Card>
 
-                  <Card className="nyxora-surface rounded-3xl border ring-0">
+                  <Card className="nyxora-surface">
                     <CardHeader>
-                      <CardTitle className="text-base font-semibold text-white">
+                      <CardTitle className="text-base font-semibold text-foreground">
                         Layer-by-layer ablation
                       </CardTitle>
-                      <CardDescription className="text-white/60">
+                      <CardDescription className="text-muted-foreground">
                         Cumulative recall as each NYXORA detection layer is enabled.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-5">
                       {(dataset?.ablation ?? []).length === 0 ? (
-                        <p className="py-6 text-center text-xs text-white/50">
+                        <p className="py-6 text-center text-xs text-muted-foreground">
                           Run benchmark to compare cumulative recall across layers.
                         </p>
                       ) : (
@@ -375,12 +376,12 @@ export default function MetricsPage() {
                               >
                                 <ProgressLabel
                                   className={`text-xs ${
-                                    layer.active ? "text-white/85" : "text-white/45"
+                                    layer.active ? "text-foreground" : "text-muted-foreground"
                                   }`}
                                 >
                                   {layer.label}
                                 </ProgressLabel>
-                                <ProgressValue className="font-mono text-xs text-[#a78bfa]">
+                                <ProgressValue className="font-mono text-xs text-highlight">
                                   {() =>
                                     layer.active && layer.recall !== null
                                       ? `${layer.recall.toFixed(1)}%${
@@ -393,7 +394,7 @@ export default function MetricsPage() {
                                 </ProgressValue>
                               </Progress>
                               {layer.note ? (
-                                <p className="text-[11px] text-white/45">{layer.note}</p>
+                                <p className="text-[11px] text-muted-foreground">{layer.note}</p>
                               ) : null}
                             </div>
                           );

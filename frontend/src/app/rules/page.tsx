@@ -471,7 +471,7 @@ export default function OwnerSettingsPage() {
         aria-live="polite"
         className={
           statusMessage
-            ? "rounded-2xl border border-[#9b82ff]/40 bg-[#7c5cff]/15 px-4 py-2.5 text-sm text-white"
+            ? "rounded-control border border-highlight/35 bg-accent/60 px-4 py-2.5 text-sm text-foreground"
             : "sr-only"
         }
       >
@@ -479,26 +479,26 @@ export default function OwnerSettingsPage() {
       </div>
 
       {!isOwner ? (
-        <Alert className="nyxora-surface rounded-3xl border-amber-400/35 text-amber-100">
+        <Alert className="nyxora-surface border-warning/35 text-warning">
           <ShieldAlert aria-hidden="true" />
           <AlertTitle>Owner access required</AlertTitle>
-          <AlertDescription className="text-amber-200/80">
+          <AlertDescription className="text-muted-foreground">
             Only the workspace Owner can manage API keys, rulebook settings, or audit logs.
           </AlertDescription>
         </Alert>
       ) : (
         <Tabs defaultValue="providers" className="space-y-4">
-          <TabsList className="rounded-full border border-white/10 bg-white/[0.04] p-1">
-            <TabsTrigger value="providers" className="rounded-full px-4 text-xs">
+          <TabsList>
+            <TabsTrigger value="providers" className="px-4 text-xs">
               Providers &amp; Keys
             </TabsTrigger>
-            <TabsTrigger value="rulebook" className="rounded-full px-4 text-xs">
+            <TabsTrigger value="rulebook" className="px-4 text-xs">
               Rulebook &amp; Defaults
             </TabsTrigger>
-            <TabsTrigger value="rules" className="rounded-full px-4 text-xs">
+            <TabsTrigger value="rules" className="px-4 text-xs">
               Custom Rules ({rules.length})
             </TabsTrigger>
-            <TabsTrigger value="users" className="rounded-full px-4 text-xs">
+            <TabsTrigger value="users" className="px-4 text-xs">
               Users &amp; Audit
             </TabsTrigger>
           </TabsList>
@@ -508,19 +508,19 @@ export default function OwnerSettingsPage() {
               const disc = discoveredByProvider[item.provider];
               const isClearing = Boolean(clearKeyByProvider[item.provider]);
               return (
-                <Card key={item.provider} className="nyxora-surface rounded-3xl border ring-0">
+                <Card key={item.provider} className="nyxora-surface">
                   <CardHeader>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
-                        <CardTitle className="text-base font-semibold text-white">
+                        <CardTitle className="text-base font-semibold text-foreground">
                           {item.label}
                         </CardTitle>
                         <Badge
                           variant="outline"
                           className={
                             item.is_configured
-                              ? "rounded-full border-emerald-400/40 bg-emerald-500/15 text-xs text-emerald-200"
-                              : "rounded-full border-white/15 bg-white/[0.04] text-xs text-white/60"
+                              ? "border-success/35 bg-success/10 text-xs text-success"
+                              : "border-border bg-secondary/50 text-xs text-muted-foreground"
                           }
                         >
                           <KeyRound className="mr-1 size-3" aria-hidden="true" />
@@ -540,7 +540,7 @@ export default function OwnerSettingsPage() {
                         />
                         <Label
                           htmlFor={`enable-${item.provider}`}
-                          className="cursor-pointer text-xs text-white/75"
+                          className="cursor-pointer text-xs text-muted-foreground"
                         >
                           {item.enabled ? "Enabled" : "Disabled"}
                         </Label>
@@ -549,7 +549,7 @@ export default function OwnerSettingsPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {!item.enabled && (item.is_configured || item.enabled_models.length > 0) ? (
-                      <p className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                      <p className="rounded-control border border-warning/35 bg-warning/10 px-3 py-2 text-xs text-warning">
                         This provider is currently <strong>Disabled</strong>, so its models will
                         not appear on /chat. Toggle the switch above to enable it.
                       </p>
@@ -558,7 +558,7 @@ export default function OwnerSettingsPage() {
                       {item.requires_api_key || item.provider === "openai_compatible" ? (
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor={`key-${item.provider}`} className="text-xs text-white/75">
+                            <Label htmlFor={`key-${item.provider}`} className="text-xs text-muted-foreground">
                               API key {item.key_hint ? `(saved: ${item.key_hint})` : ""}
                             </Label>
                             {item.key_hint ? (
@@ -570,7 +570,7 @@ export default function OwnerSettingsPage() {
                                     [item.provider]: !prev[item.provider],
                                   }))
                                 }
-                                className="cursor-pointer text-[11px] text-red-300 hover:text-red-200"
+                                className="cursor-pointer text-[11px] text-destructive hover:text-destructive-foreground"
                               >
                                 {isClearing ? "Keep existing key" : "Clear stored key"}
                               </button>
@@ -608,7 +608,7 @@ export default function OwnerSettingsPage() {
 
                       {item.provider === "openai_compatible" ? (
                         <div className="space-y-1.5">
-                          <Label htmlFor={`url-${item.provider}`} className="text-xs text-white/75">
+                          <Label htmlFor={`url-${item.provider}`} className="text-xs text-muted-foreground">
                             Base URL
                           </Label>
                           <Input
@@ -632,8 +632,8 @@ export default function OwnerSettingsPage() {
                     </div>
 
                     {item.enabled_models.length > 0 && !disc ? (
-                      <div className="space-y-1.5 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
-                        <p className="text-xs text-white/60">
+                      <div className="space-y-1.5 rounded-control border border-border bg-muted/50 p-3">
+                        <p className="text-xs text-muted-foreground">
                           Enabled models ({item.enabled_models.length}) — click Discover models to
                           edit:
                         </p>
@@ -642,7 +642,7 @@ export default function OwnerSettingsPage() {
                             <Badge
                               key={modelId}
                               variant="outline"
-                              className="rounded-full border-white/15 bg-white/[0.05] font-mono text-[11px] text-white/85"
+                              className="border-border bg-secondary/50 font-mono text-[11px] text-foreground"
                             >
                               {modelId}
                             </Badge>
@@ -652,13 +652,13 @@ export default function OwnerSettingsPage() {
                     ) : null}
 
                     {disc ? (
-                      <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
-                        <p className="text-xs text-white/65">
+                      <div className="space-y-2 rounded-control border border-border bg-muted/50 p-3.5">
+                        <p className="text-xs text-muted-foreground">
                           Discovered models ({disc.source}) — toggle which ones users can select,
                           then click Save provider:
                         </p>
                         {disc.models.length === 0 ? (
-                          <p className="text-xs text-amber-200/80">
+                          <p className="text-xs text-warning">
                             No models returned. Check your API key or Base URL.
                           </p>
                         ) : (
@@ -698,9 +698,10 @@ export default function OwnerSettingsPage() {
                       </Button>
                       <Button
                         type="button"
+                        variant="highlight"
                         size="sm"
                         onClick={() => handleSaveProvider(item)}
-                        className="cursor-pointer bg-white text-zinc-950 hover:bg-white/90"
+                        className="cursor-pointer font-semibold"
                       >
                         Save provider
                       </Button>
@@ -713,12 +714,12 @@ export default function OwnerSettingsPage() {
 
           <TabsContent value="rulebook">
             {ws ? (
-              <Card className="nyxora-surface rounded-3xl border ring-0">
+              <Card className="nyxora-surface">
                 <CardHeader>
-                  <CardTitle id="workspace-settings-heading" className="text-base font-semibold text-white">
+                  <CardTitle id="workspace-settings-heading" className="text-base font-semibold text-foreground">
                     Review defaults &amp; GPU rulebook
                   </CardTitle>
-                  <CardDescription className="text-white/60">
+                  <CardDescription className="text-muted-foreground">
                     Controls what simple users see on /chat and the rulebook used by the local GPU LLM layer.
                   </CardDescription>
                 </CardHeader>
@@ -741,7 +742,7 @@ export default function OwnerSettingsPage() {
                             })
                           }
                         />
-                        <Label htmlFor="allow-auto" className="text-sm text-white/85">
+                        <Label htmlFor="allow-auto" className="text-sm text-foreground">
                           Allow Auto Review mode
                         </Label>
                       </div>
@@ -752,7 +753,7 @@ export default function OwnerSettingsPage() {
                           checked={ws.gpu_llm_enabled}
                           onCheckedChange={(checked) => setWs({ ...ws, gpu_llm_enabled: checked })}
                         />
-                        <Label htmlFor="gpu-llm" className="text-sm text-white/85">
+                        <Label htmlFor="gpu-llm" className="text-sm text-foreground">
                           Enable GPU Rulebook LLM
                         </Label>
                       </div>
@@ -760,7 +761,7 @@ export default function OwnerSettingsPage() {
 
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="default-model" className="text-xs text-white/75">
+                        <Label htmlFor="default-model" className="text-xs text-muted-foreground">
                           Default provider &amp; model
                         </Label>
                         <Select
@@ -777,7 +778,7 @@ export default function OwnerSettingsPage() {
                             });
                           }}
                         >
-                          <SelectTrigger id="default-model" className="w-full rounded-full">
+                          <SelectTrigger id="default-model" className="w-full">
                             <SelectValue placeholder="Enable a provider first" />
                           </SelectTrigger>
                           <SelectContent>
@@ -794,7 +795,7 @@ export default function OwnerSettingsPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label htmlFor="default-mode" className="text-xs text-white/75">
+                        <Label htmlFor="default-mode" className="text-xs text-muted-foreground">
                           Default review mode
                         </Label>
                         <Select
@@ -803,7 +804,7 @@ export default function OwnerSettingsPage() {
                             if (value) setWs({ ...ws, default_review_mode: value as "manual" | "auto" });
                           }}
                         >
-                          <SelectTrigger id="default-mode" className="w-full rounded-full">
+                          <SelectTrigger id="default-mode" className="w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -816,7 +817,7 @@ export default function OwnerSettingsPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label htmlFor="default-thinking" className="text-xs text-white/75">
+                        <Label htmlFor="default-thinking" className="text-xs text-muted-foreground">
                           Default thinking effort
                         </Label>
                         <Select
@@ -830,7 +831,7 @@ export default function OwnerSettingsPage() {
                             }
                           }}
                         >
-                          <SelectTrigger id="default-thinking" className="w-full rounded-full">
+                          <SelectTrigger id="default-thinking" className="w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -843,10 +844,10 @@ export default function OwnerSettingsPage() {
                     </div>
 
                     {ws.gpu_llm_enabled ? (
-                      <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                      <div className="space-y-4 rounded-control border border-border bg-muted/40 p-4">
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-1.5 sm:col-span-2">
-                            <Label htmlFor="gpu-endpoint" className="text-xs text-white/75">
+                            <Label htmlFor="gpu-endpoint" className="text-xs text-muted-foreground">
                               GPU Server OpenAI-compatible Endpoint (vLLM / RunPod / Ollama)
                             </Label>
                             <Input
@@ -863,7 +864,7 @@ export default function OwnerSettingsPage() {
                           </div>
 
                           <div className="space-y-1.5">
-                            <Label htmlFor="gpu-model" className="text-xs text-white/75">
+                            <Label htmlFor="gpu-model" className="text-xs text-muted-foreground">
                               SLM Model ID
                             </Label>
                             <Input
@@ -880,10 +881,10 @@ export default function OwnerSettingsPage() {
 
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
-                              <Label htmlFor="gpu-api-key" className="text-xs text-white/75">
+                              <Label htmlFor="gpu-api-key" className="text-xs text-muted-foreground">
                                 Optional Bearer API Key{" "}
                                 {ws.gpu_llm_key_hint ? (
-                                  <span className="font-mono text-[#b8a5ff]">
+                                  <span className="font-mono text-highlight">
                                     ({ws.gpu_llm_key_hint})
                                   </span>
                                 ) : null}
@@ -892,7 +893,7 @@ export default function OwnerSettingsPage() {
                                 <button
                                   type="button"
                                   onClick={() => setClearGpuKey((prev) => !prev)}
-                                  className="cursor-pointer text-[11px] text-red-300 hover:text-red-200"
+                                  className="cursor-pointer text-[11px] text-destructive hover:text-destructive-foreground"
                                 >
                                   {clearGpuKey ? "Keep existing key" : "Clear stored key"}
                                 </button>
@@ -932,8 +933,8 @@ export default function OwnerSettingsPage() {
                             <Activity className="size-3.5" aria-hidden="true" />
                             <span>{testingGpu ? "Testing connection..." : "Test GPU connection"}</span>
                           </Button>
-                          <p className="text-xs text-white/55">
-                            Probes <code className="font-mono text-white/75">/models</code> using
+                          <p className="text-xs text-muted-foreground">
+                            Probes <code className="font-mono text-foreground">/models</code> using
                             your current draft settings.
                           </p>
                         </div>
@@ -941,23 +942,23 @@ export default function OwnerSettingsPage() {
                         {gpuTestResult ? (
                           <div
                             role="status"
-                            className={`space-y-2 rounded-2xl border p-3 text-xs ${
+                            className={`space-y-2 rounded-control border p-3 text-xs ${
                               gpuTestResult.ok
-                                ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-100"
-                                : "border-amber-400/35 bg-amber-500/10 text-amber-100"
+                                ? "border-success/35 bg-success/10 text-success"
+                                : "border-warning/35 bg-warning/10 text-warning"
                             }`}
                           >
                             <div className="flex items-center gap-2 font-medium">
                               {gpuTestResult.ok ? (
-                                <CheckCircle2 className="size-4 text-emerald-300" aria-hidden="true" />
+                                <CheckCircle2 className="size-4" aria-hidden="true" />
                               ) : (
-                                <XCircle className="size-4 text-amber-300" aria-hidden="true" />
+                                <XCircle className="size-4" aria-hidden="true" />
                               )}
                               <span>{gpuTestResult.detail}</span>
                             </div>
                             {gpuTestResult.available_models.length > 0 && !gpuTestResult.model_found ? (
                               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                <span className="text-white/70">Use detected model:</span>
+                                <span className="text-muted-foreground">Use detected model:</span>
                                 {gpuTestResult.available_models.map((mid) => (
                                   <Button
                                     key={mid}
@@ -978,7 +979,7 @@ export default function OwnerSettingsPage() {
                     ) : null}
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="rulebook-prompt" className="text-xs text-white/75">
+                      <Label htmlFor="rulebook-prompt" className="text-xs text-muted-foreground">
                         Privacy Rulebook Instructions
                       </Label>
                       <Textarea
@@ -993,7 +994,8 @@ export default function OwnerSettingsPage() {
                     <div className="flex justify-end">
                       <Button
                         type="submit"
-                        className="cursor-pointer bg-white px-5 text-zinc-950 hover:bg-white/90"
+                        variant="highlight"
+                        className="cursor-pointer px-5 font-semibold"
                       >
                         Save workspace settings
                       </Button>
@@ -1005,22 +1007,22 @@ export default function OwnerSettingsPage() {
           </TabsContent>
 
           <TabsContent value="rules">
-            <Card className="nyxora-surface rounded-3xl border ring-0">
+            <Card className="nyxora-surface">
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
-                  <CardTitle id="custom-rules-heading" className="text-base font-semibold text-white">
+                  <CardTitle id="custom-rules-heading" className="text-base font-semibold text-foreground">
                     Company custom rules
                   </CardTitle>
-                  <CardDescription className="text-white/60">
+                  <CardDescription className="text-muted-foreground">
                     Persisted in SQLite (/api/rules) and applied in Layer 1 filtering. Or import a{" "}
-                    <code className="font-mono text-white/80">.md</code> policy file with{" "}
-                    <code className="font-mono text-white/80">- pattern | TYPE</code> lines and SLM
+                    <code className="font-mono text-foreground">.md</code> policy file with{" "}
+                    <code className="font-mono text-foreground">- pattern | TYPE</code> lines and SLM
                     rulebook notes.
                   </CardDescription>
                 </div>
                 <label
                   htmlFor="rules-md-upload"
-                  className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-[#9b82ff]/40 bg-[#7c5cff]/15 px-4 text-xs font-medium text-white transition-colors hover:bg-[#7c5cff]/25"
+                  className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-control border border-highlight/35 bg-accent px-3.5 text-xs font-medium text-highlight transition-colors hover:bg-accent/80"
                 >
                   <Upload className="size-3.5" aria-hidden="true" />
                   <span>{importingMarkdown ? "Importing .md..." : "Import rules (.md)"}</span>
@@ -1047,7 +1049,7 @@ export default function OwnerSettingsPage() {
                   className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-[1fr_180px_auto_auto] lg:items-end"
                 >
                   <div className="space-y-1.5">
-                    <Label htmlFor="rule-pattern" className="text-xs font-medium text-white/75">
+                    <Label htmlFor="rule-pattern" className="text-xs font-medium text-muted-foreground">
                       Keyword or regex pattern
                     </Label>
                     <Input
@@ -1065,7 +1067,7 @@ export default function OwnerSettingsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="rule-type" className="text-xs font-medium text-white/75">
+                    <Label htmlFor="rule-type" className="text-xs font-medium text-muted-foreground">
                       Entity type
                     </Label>
                     <Select
@@ -1074,12 +1076,12 @@ export default function OwnerSettingsPage() {
                         if (value) setEntityType(value as EntityType);
                       }}
                     >
-                      <SelectTrigger id="rule-type" className="w-full rounded-full text-xs">
+                      <SelectTrigger id="rule-type" className="w-full text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {ENTITY_TYPES.map((item) => (
-                          <SelectItem key={item} value={item} className="rounded-xl text-xs">
+                          <SelectItem key={item} value={item} className="text-xs">
                             {item}
                           </SelectItem>
                         ))}
@@ -1093,14 +1095,15 @@ export default function OwnerSettingsPage() {
                       checked={isRegex}
                       onCheckedChange={(checked) => setIsRegex(checked)}
                     />
-                    <Label htmlFor="rule-regex" className="text-xs text-white/75">
+                    <Label htmlFor="rule-regex" className="text-xs text-muted-foreground">
                       Regex
                     </Label>
                   </div>
 
                   <Button
                     type="submit"
-                    className="h-10 cursor-pointer bg-white px-4 text-xs font-semibold text-zinc-950 hover:bg-white/90"
+                    variant="highlight"
+                    className="h-10 cursor-pointer px-4 text-xs font-semibold"
                   >
                     <Plus className="size-3.5" aria-hidden="true" />
                     <span>Add rule</span>
@@ -1111,28 +1114,28 @@ export default function OwnerSettingsPage() {
                   tabIndex={0}
                   role="region"
                   aria-labelledby="custom-rules-heading"
-                  className="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b82ff]"
+                  className="overflow-x-auto rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-transparent">
-                        <TableHead className="text-xs text-white/55">Pattern</TableHead>
-                        <TableHead className="text-xs text-white/55">Type</TableHead>
-                        <TableHead className="text-xs text-white/55">Mode</TableHead>
-                        <TableHead className="text-xs text-white/55">Enabled</TableHead>
-                        <TableHead className="text-right text-xs text-white/55">Action</TableHead>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-xs text-muted-foreground">Pattern</TableHead>
+                        <TableHead className="text-xs text-muted-foreground">Type</TableHead>
+                        <TableHead className="text-xs text-muted-foreground">Mode</TableHead>
+                        <TableHead className="text-xs text-muted-foreground">Enabled</TableHead>
+                        <TableHead className="text-right text-xs text-muted-foreground">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {rules.map((rule) => (
-                        <TableRow key={rule.id} className="border-white/[0.07] hover:bg-white/[0.03]">
-                          <TableCell className="font-mono text-xs text-white">
+                        <TableRow key={rule.id} className="border-border/60 hover:bg-secondary/40">
+                          <TableCell className="font-mono text-xs text-foreground">
                             {rule.pattern}
                           </TableCell>
                           <TableCell>
                             <EntityBadge entityType={rule.entity_type} />
                           </TableCell>
-                          <TableCell className="text-xs text-white/70">
+                          <TableCell className="text-xs text-muted-foreground">
                             {rule.is_regex ? "Regex" : "Keyword"}
                           </TableCell>
                           <TableCell>
@@ -1149,7 +1152,7 @@ export default function OwnerSettingsPage() {
                               size="icon-sm"
                               aria-label={`Delete ${rule.pattern}`}
                               onClick={() => handleDeleteRule(rule.id)}
-                              className="cursor-pointer text-white/60 hover:bg-red-500/15 hover:text-red-200"
+                              className="cursor-pointer text-muted-foreground hover:bg-destructive/15 hover:text-destructive-foreground"
                             >
                               <Trash2 className="size-3.5" aria-hidden="true" />
                             </Button>
@@ -1164,12 +1167,12 @@ export default function OwnerSettingsPage() {
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
-            <Card className="nyxora-surface rounded-3xl border ring-0">
+            <Card className="nyxora-surface">
               <CardHeader>
-                <CardTitle id="provision-user-heading" className="text-base font-semibold text-white">
+                <CardTitle id="provision-user-heading" className="text-base font-semibold text-foreground">
                   Provision workspace account
                 </CardTitle>
-                <CardDescription className="text-white/60">
+                <CardDescription className="text-muted-foreground">
                   Public sign-up is disabled. Only the Owner can add or deactivate accounts (
                   {users.filter((u) => u.is_active).length} active / {users.length} total).
                 </CardDescription>
@@ -1181,7 +1184,7 @@ export default function OwnerSettingsPage() {
                   className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_130px_auto] lg:items-end"
                 >
                   <div className="space-y-1">
-                    <Label htmlFor="new-user-name" className="text-xs text-white/75">
+                    <Label htmlFor="new-user-name" className="text-xs text-muted-foreground">
                       Name
                     </Label>
                     <Input
@@ -1195,7 +1198,7 @@ export default function OwnerSettingsPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="new-user-email" className="text-xs text-white/75">
+                    <Label htmlFor="new-user-email" className="text-xs text-muted-foreground">
                       Email
                     </Label>
                     <Input
@@ -1213,7 +1216,7 @@ export default function OwnerSettingsPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="new-user-pass" className="text-xs text-white/75">
+                    <Label htmlFor="new-user-pass" className="text-xs text-muted-foreground">
                       Password
                     </Label>
                     <Input
@@ -1229,7 +1232,7 @@ export default function OwnerSettingsPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="new-user-role" className="text-xs text-white/75">
+                    <Label htmlFor="new-user-role" className="text-xs text-muted-foreground">
                       Role
                     </Label>
                     <Select
@@ -1238,7 +1241,7 @@ export default function OwnerSettingsPage() {
                         if (v) setNewUserRole(v as "user" | "owner");
                       }}
                     >
-                      <SelectTrigger id="new-user-role" className="w-full rounded-full text-xs">
+                      <SelectTrigger id="new-user-role" className="w-full text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1249,7 +1252,8 @@ export default function OwnerSettingsPage() {
                   </div>
                   <Button
                     type="submit"
-                    className="h-10 cursor-pointer bg-white px-4 text-xs font-semibold text-zinc-950 hover:bg-white/90"
+                    variant="highlight"
+                    className="h-10 cursor-pointer px-4 text-xs font-semibold"
                   >
                     <UserPlus className="size-3.5" aria-hidden="true" />
                     <span>Add</span>
@@ -1260,16 +1264,16 @@ export default function OwnerSettingsPage() {
                   tabIndex={0}
                   role="region"
                   aria-label="Provisioned workspace accounts"
-                  className="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b82ff]"
+                  className="overflow-x-auto rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-transparent">
-                        <TableHead className="text-xs text-white/55">Name</TableHead>
-                        <TableHead className="text-xs text-white/55">Email</TableHead>
-                        <TableHead className="text-xs text-white/55">Role</TableHead>
-                        <TableHead className="text-xs text-white/55">Status</TableHead>
-                        <TableHead className="text-right text-xs text-white/55">Active</TableHead>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-xs text-muted-foreground">Name</TableHead>
+                        <TableHead className="text-xs text-muted-foreground">Email</TableHead>
+                        <TableHead className="text-xs text-muted-foreground">Role</TableHead>
+                        <TableHead className="text-xs text-muted-foreground">Status</TableHead>
+                        <TableHead className="text-right text-xs text-muted-foreground">Active</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1278,21 +1282,21 @@ export default function OwnerSettingsPage() {
                         return (
                           <TableRow
                             key={account.id}
-                            className="border-white/[0.07] hover:bg-white/[0.03]"
+                            className="border-border/60 hover:bg-secondary/40"
                           >
-                            <TableCell className="text-xs font-medium text-white">
+                            <TableCell className="text-xs font-medium text-foreground">
                               {account.full_name}
                               {isSelf ? (
-                                <span className="ml-1.5 text-[11px] text-white/50">(you)</span>
+                                <span className="ml-1.5 text-[11px] text-muted-foreground">(you)</span>
                               ) : null}
                             </TableCell>
-                            <TableCell className="font-mono text-xs text-white/75">
+                            <TableCell className="font-mono text-xs text-muted-foreground">
                               {account.email}
                             </TableCell>
                             <TableCell>
                               <Badge
                                 variant="outline"
-                                className="rounded-full border-white/15 bg-white/[0.04] text-[11px] capitalize text-white/80"
+                                className="border-border bg-secondary/50 text-[11px] capitalize text-foreground"
                               >
                                 {account.role}
                               </Badge>
@@ -1302,8 +1306,8 @@ export default function OwnerSettingsPage() {
                                 variant="outline"
                                 className={
                                   account.is_active
-                                    ? "rounded-full border-emerald-400/40 bg-emerald-500/15 text-[11px] text-emerald-200"
-                                    : "rounded-full border-red-400/35 bg-red-500/10 text-[11px] text-red-200"
+                                    ? "border-success/35 bg-success/10 text-[11px] text-success"
+                                    : "border-destructive/35 bg-destructive/10 text-[11px] text-destructive-foreground"
                                 }
                               >
                                 {account.is_active ? "Active" : "Disabled"}
@@ -1330,13 +1334,13 @@ export default function OwnerSettingsPage() {
               </CardContent>
             </Card>
 
-            <Card className="nyxora-surface rounded-3xl border ring-0">
+            <Card className="nyxora-surface">
               <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <CardTitle id="audit-log-heading" className="text-base font-semibold text-white">
+                  <CardTitle id="audit-log-heading" className="text-base font-semibold text-foreground">
                     Metadata-only audit log
                   </CardTitle>
-                  <CardDescription className="text-white/60">
+                  <CardDescription className="text-muted-foreground">
                     Live from GET /api/audit · Never stores raw text, prompts, or vault mappings.
                   </CardDescription>
                 </div>
@@ -1357,23 +1361,23 @@ export default function OwnerSettingsPage() {
               </CardHeader>
               <CardContent>
                 {auditLogs.length === 0 ? (
-                  <p className="text-sm text-white/55">No audit events recorded yet.</p>
+                  <p className="text-sm text-muted-foreground">No audit events recorded yet.</p>
                 ) : (
                   <div
                     tabIndex={0}
                     role="region"
                     aria-labelledby="audit-log-heading"
-                    className="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b82ff]"
+                    className="overflow-x-auto rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-white/10 hover:bg-transparent">
-                          <TableHead className="text-xs text-white/55">Event</TableHead>
-                          <TableHead className="text-xs text-white/55">Provider</TableHead>
-                          <TableHead className="text-xs text-white/55">Decision</TableHead>
-                          <TableHead className="text-xs text-white/55">Entities</TableHead>
-                          <TableHead className="text-xs text-white/55">Session</TableHead>
-                          <TableHead className="text-right text-xs text-white/55">Timestamp</TableHead>
+                        <TableRow className="border-border hover:bg-transparent">
+                          <TableHead className="text-xs text-muted-foreground">Event</TableHead>
+                          <TableHead className="text-xs text-muted-foreground">Provider</TableHead>
+                          <TableHead className="text-xs text-muted-foreground">Decision</TableHead>
+                          <TableHead className="text-xs text-muted-foreground">Entities</TableHead>
+                          <TableHead className="text-xs text-muted-foreground">Session</TableHead>
+                          <TableHead className="text-right text-xs text-muted-foreground">Timestamp</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1384,28 +1388,28 @@ export default function OwnerSettingsPage() {
                           return (
                             <TableRow
                               key={entry.id}
-                              className="border-white/[0.07] hover:bg-white/[0.03]"
+                              className="border-border/60 hover:bg-secondary/40"
                             >
-                              <TableCell className="font-mono text-xs text-[#a78bfa]">
+                              <TableCell className="font-mono text-xs text-highlight">
                                 {entry.action}
                               </TableCell>
-                              <TableCell className="text-xs text-white/75">
+                              <TableCell className="text-xs text-foreground">
                                 {entry.provider ?? "—"}
                               </TableCell>
                               <TableCell>
                                 {entry.approved === null ? (
-                                  <span className="text-xs text-white/45">—</span>
+                                  <span className="text-xs text-muted-foreground">—</span>
                                 ) : entry.approved ? (
                                   <Badge
                                     variant="outline"
-                                    className="rounded-full border-emerald-400/40 bg-emerald-500/15 text-[10px] text-emerald-200"
+                                    className="border-success/35 bg-success/10 text-[10px] text-success"
                                   >
                                     Approved
                                   </Badge>
                                 ) : (
                                   <Badge
                                     variant="outline"
-                                    className="rounded-full border-red-400/35 bg-red-500/10 text-[10px] text-red-200"
+                                    className="border-destructive/35 bg-destructive/10 text-[10px] text-destructive-foreground"
                                   >
                                     Rejected
                                   </Badge>
@@ -1413,14 +1417,14 @@ export default function OwnerSettingsPage() {
                               </TableCell>
                               <TableCell>
                                 {counts.length === 0 ? (
-                                  <span className="text-xs text-white/45">—</span>
+                                  <span className="text-xs text-muted-foreground">—</span>
                                 ) : (
                                   <div className="flex flex-wrap gap-1">
                                     {counts.map(([key, count]) => (
                                       <Badge
                                         key={key}
                                         variant="outline"
-                                        className="rounded-full border-white/15 bg-white/[0.04] font-mono text-[10px] text-white/80"
+                                        className="border-border bg-secondary/50 font-mono text-[10px] text-foreground"
                                       >
                                         {key}:{count}
                                       </Badge>
@@ -1428,12 +1432,12 @@ export default function OwnerSettingsPage() {
                                   </div>
                                 )}
                               </TableCell>
-                              <TableCell className="font-mono text-xs text-white/60">
+                              <TableCell className="font-mono text-xs text-muted-foreground">
                                 {entry.gateway_session_id
                                   ? entry.gateway_session_id.slice(0, 8)
                                   : "—"}
                               </TableCell>
-                              <TableCell className="text-right text-xs text-white/60">
+                              <TableCell className="text-right text-xs text-muted-foreground">
                                 {new Date(entry.created_at).toLocaleString()}
                               </TableCell>
                             </TableRow>
