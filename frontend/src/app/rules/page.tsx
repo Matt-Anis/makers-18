@@ -170,10 +170,65 @@ export default function OwnerSettingsPage() {
       );
       setKeyDrafts((prev) => ({ ...prev, [item.provider]: "" }));
       setClearKeyByProvider((prev) => ({ ...prev, [item.provider]: false }));
-      setStatusMessage(`Saved ${item.label} settings (API key encrypted at rest).`);
+      if (!updated.enabled && (updated.is_configured || updated.enabled_models.length > 0)) {
+        setStatusMessage(
+          `Saved ${item.label} settings, but this provider is Disabled — turn on the Enabled switch for its models to appear on /chat.`,
+        );
+      } else if (updated.enabled && !updated.is_configured) {
+        setStatusMessage(
+          `Saved ${item.label} settings, but ${
+            updated.provider === "openai_compatible" ? "a Base URL" : "an API key"
+          } is still required before its models appear on /chat.`,
+        );
+      } else {
+        const details: string[] = [];
+        if (updated.enabled) details.push("enabled on /chat");
+        if (updated.key_hint) details.push("API key encrypted at rest");
+        setStatusMessage(
+          `Saved ${item.label} settings${details.length > 0 ? ` (${details.join("; ")})` : ""}.`,
+        );
+      }
       await refreshAvailableModels();
     } catch (error) {
       setStatusMessage(error instanceof ApiError ? error.message : "Failed to save provider.");
+    }
+  }
+
+  async function handleToggleProviderEnabled(item: ProviderConfigOut, checked: boolean) {
+    setStatusMessage(null);
+    setProviders((prev) =>
+      prev.map((p) => (p.provider === item.provider ? { ...p, enabled: checked } : p)),
+    );
+
+    if (!item.is_configured) {
+      return;
+    }
+
+    try {
+      const updated = await apiFetch<ProviderConfigOut>(`/settings/providers/${item.provider}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          api_key: null,
+          clear_api_key: false,
+          base_url: item.base_url,
+          enabled: checked,
+          enabled_models: item.enabled_models,
+        }),
+      });
+      setProviders((prev) =>
+        prev.map((p) => (p.provider === updated.provider ? updated : p)),
+      );
+      setStatusMessage(
+        updated.enabled
+          ? `${item.label} is now enabled and available on /chat.`
+          : `${item.label} is now disabled and hidden from /chat.`,
+      );
+      await refreshAvailableModels();
+    } catch (error) {
+      setProviders((prev) =>
+        prev.map((p) => (p.provider === item.provider ? { ...p, enabled: item.enabled } : p)),
+      );
+      setStatusMessage(error instanceof ApiError ? error.message : "Failed to update provider.");
     }
   }
 
@@ -209,6 +264,7 @@ export default function OwnerSettingsPage() {
         const exists = p.enabled_models.includes(modelId);
         return {
           ...p,
+          enabled: exists ? p.enabled : true,
           enabled_models: exists
             ? p.enabled_models.filter((m) => m !== modelId)
             : [...p.enabled_models, modelId],
@@ -477,23 +533,27 @@ export default function OwnerSettingsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Switch
+                          id={`enable-${item.provider}`}
                           aria-label={`Enable ${item.label}`}
                           checked={item.enabled}
-                          onCheckedChange={(checked) =>
-                            setProviders((prev) =>
-                              prev.map((p) =>
-                                p.provider === item.provider ? { ...p, enabled: checked } : p,
-                              ),
-                            )
-                          }
+                          onCheckedChange={(checked) => handleToggleProviderEnabled(item, checked)}
                         />
-                        <span className="text-xs text-white/75">
+                        <Label
+                          htmlFor={`enable-${item.provider}`}
+                          className="cursor-pointer text-xs text-white/75"
+                        >
                           {item.enabled ? "Enabled" : "Disabled"}
-                        </span>
+                        </Label>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {!item.enabled && (item.is_configured || item.enabled_models.length > 0) ? (
+                      <p className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                        This provider is currently <strong>Disabled</strong>, so its models will
+                        not appear on /chat. Toggle the switch above to enable it.
+                      </p>
+                    ) : null}
                     <div className="grid gap-3 sm:grid-cols-2">
                       {item.requires_api_key || item.provider === "openai_compatible" ? (
                         <div className="space-y-1.5">

@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user
 from app.db import get_db
 from app.models import ProviderConfig, User, WorkspaceSettings
-from app.providers.discovery import PROVIDER_CATALOG, _to_model_info
+from app.providers.discovery import PROVIDER_CATALOG, _to_model_info, discover_provider_models
 from app.schemas.settings import DiscoveredModelOut, ModelDiscoveryResponse
+from app.security import decrypt_secret, get_secret_fernet
 
 router = APIRouter(prefix="/providers", tags=["providers"])
 
@@ -31,6 +32,30 @@ def list_available_models(
 
         fallback_by_id = {m.model_id: m for m in spec.fallback_models}
         model_ids = cfg.enabled_models or [m.model_id for m in spec.fallback_models]
+        if not model_ids and cfg.provider == "openai_compatible" and cfg.base_url:
+            raw_key = (
+                decrypt_secret(cfg.encrypted_api_key, get_secret_fernet())
+                if cfg.encrypted_api_key
+                else None
+            )
+            live_models, _source = discover_provider_models(
+                provider=cfg.provider,
+                api_key=raw_key,
+                base_url=cfg.base_url,
+            )
+            for info in live_models:
+                discovered.append(
+                    DiscoveredModelOut(
+                        provider=info.provider,
+                        provider_label=info.provider_label,
+                        model_id=info.model_id,
+                        display_name=info.display_name,
+                        supports_thinking=info.supports_thinking,
+                        thinking_efforts=list(info.thinking_efforts),
+                    )
+                )
+            continue
+
         for model_id in model_ids:
             info = fallback_by_id.get(model_id) or _to_model_info(cfg.provider, model_id)
             discovered.append(
