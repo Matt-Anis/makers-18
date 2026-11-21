@@ -65,6 +65,7 @@ Each new message passes sequentially through pluggable layers:
 - [x] **Layer 3 — Accept/Reject Send Gate & Live Providers (`backend`):** Implemented `POST /sessions/{id}/messages` (`manual` / `auto`), Accept/Reject endpoints (`POST /sessions/{id}/reviews/{rid}/approve` & `/reject`), OpenAI/Anthropic/Gemini/OpenAI-compatible/Mock provider dispatch, and deterministic `<1ms` unmasking.
 - [x] **Layer 4 — Wired Frontend & UI Refresh (`frontend`):** Live `/sessions/{id}/messages`, Send Gate review card, persistent history reload, tabbed Privacy Inspector, GFM Markdown assistant rendering, global CSS-variable teal/charcoal theme, ChatGPT/Claude-style `/chat` workspace, floating scroll-hiding navbar, and interactive Send Gate homepage.
 - [x] **File ingestion (`scrubber.py`):** `.docx`, text-layer `.pdf`, and `.txt` parsing with metadata, comments, and deleted tracked-changes stripping (`POST /ingestion/extract`).
+- [x] **OCR for scanned PDFs:** Text extraction support for scanned PDF documents.
 - [x] **Separate GPU server automation & SLM layer:** `gpu/compose.gpu.yaml`, `scripts/setup-gpu-server.sh`, GPU connection test endpoint, and parallel async SLM extraction (`backend/app/detection/slm_client.py`).
 - [x] **Evaluation harness:** 60 synthetic + 14 realistic labeled contract benchmarks with per-entity recall/precision, layer-by-layer ablation, and 100% unmask round-trip check (`backend/app/evaluation/runner.py`, `GET /metrics/latest`, `POST /metrics/run`, `/metrics`).
 
@@ -73,4 +74,4 @@ Each new message passes sequentially through pluggable layers:
 - [ ] Bracket-aware SSE token streaming (buffer `[TYPE_...]` chunks before emitting unmasked tokens).
 - [ ] Conversational / stop-and-edit redaction refinement inside the Send Gate.
 - [ ] Long-context masked summarization for very large multi-document threads.
-- [ ] OCR for scanned PDFs and multimodal/image redaction support.
+- [ ] Multimodal/image redaction support.
