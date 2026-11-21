@@ -44,6 +44,7 @@ from app.schemas.sessions import (
     SendMessageRequest,
     SendMessageResponse,
     SessionInspectorOut,
+    UpdateGatewaySessionRequest,
     VaultIndexEntryOut,
 )
 from app.security import decrypt_secret, encrypt_secret, get_secret_fernet
@@ -298,6 +299,26 @@ def inspect_session_vault(
         entries=entries,
         messages=messages,
     )
+
+
+@router.patch("/{session_id}", response_model=GatewaySessionOut)
+def update_session(
+    session_id: str,
+    payload: UpdateGatewaySessionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> GatewaySession:
+    """Rename an active gateway session owned by the current user."""
+    gateway_session = _get_owned_session(db, session_id, current_user.id)
+    if gateway_session.status != GatewaySessionStatus.ACTIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot rename an ended session",
+        )
+    gateway_session.title = payload.title
+    db.commit()
+    db.refresh(gateway_session)
+    return gateway_session
 
 
 @router.delete("/{session_id}")

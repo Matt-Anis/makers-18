@@ -1,10 +1,8 @@
 "use client";
 
-import { Eye, EyeOff, Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Popover } from "@base-ui/react/popover";
+import { ChevronDown, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,10 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DiscoveredModel, GatewaySession } from "@/lib/api";
+import type { DiscoveredModel } from "@/lib/api";
 
 interface SessionControlBarProps {
   models: DiscoveredModel[];
+  modelsLoaded: boolean;
   selectedModelKey: string;
   onSelectModelKey: (key: string) => void;
   thinkingEffort: "low" | "medium" | "high";
@@ -23,17 +22,21 @@ interface SessionControlBarProps {
   reviewMode: "manual" | "auto";
   allowAutoReview: boolean;
   onReviewModeChange: (mode: "manual" | "auto") => void;
-  sessions: GatewaySession[];
-  activeSession: GatewaySession | null;
-  onSelectSession: (sessionId: string) => void;
-  onNewSession: () => void;
-  onEndSession: () => void;
-  showMasked: boolean;
-  onToggleShowMasked: () => void;
-  inspectorEnabled: boolean;
-  onToggleInspector: () => void;
   busy: boolean;
 }
+
+const REVIEW_MODES = [
+  {
+    value: "manual",
+    label: "Manual approval",
+    description: "Inspect and approve masked text before sending.",
+  },
+  {
+    value: "auto",
+    label: "Auto review",
+    description: "Mask and send automatically without pausing.",
+  },
+] as const;
 
 export function modelOptionKey(model: DiscoveredModel): string {
   return `${model.provider}::${model.model_id}`;
@@ -41,6 +44,7 @@ export function modelOptionKey(model: DiscoveredModel): string {
 
 export function SessionControlBar({
   models,
+  modelsLoaded,
   selectedModelKey,
   onSelectModelKey,
   thinkingEffort,
@@ -48,204 +52,167 @@ export function SessionControlBar({
   reviewMode,
   allowAutoReview,
   onReviewModeChange,
-  sessions,
-  activeSession,
-  onSelectSession,
-  onNewSession,
-  onEndSession,
-  showMasked,
-  onToggleShowMasked,
-  inspectorEnabled,
-  onToggleInspector,
   busy,
 }: SessionControlBarProps) {
-  const currentModel = models.find((m) => modelOptionKey(m) === selectedModelKey) ?? models[0];
+  const model = models.find((entry) => modelOptionKey(entry) === selectedModelKey) ?? models[0];
+  const efforts = model?.thinking_efforts.filter(
+    (effort): effort is "low" | "medium" | "high" =>
+      effort === "low" || effort === "medium" || effort === "high",
+  );
+  const showThinking = Boolean(model?.supports_thinking && efforts && efforts.length > 0);
 
   return (
-    <Card className="nyxora-surface rounded-3xl border ring-0">
-      <CardContent className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-            <Label htmlFor="model-select" className="text-xs font-medium text-white/60">
-              Model
-            </Label>
-            <Select
-              value={selectedModelKey}
-              onValueChange={(value) => {
-                if (value) onSelectModelKey(value);
-              }}
-            >
-              <SelectTrigger
-                id="model-select"
-                className="h-9 w-full rounded-full px-3.5 text-xs text-white sm:w-auto sm:min-w-48 sm:text-sm"
-              >
-                <SelectValue placeholder="No models enabled" />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((item) => {
-                  const key = modelOptionKey(item);
-                  return (
-                    <SelectItem key={key} value={key} className="rounded-xl">
-                      {item.display_name} ({item.provider_label})
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
+    <div
+      className="flex min-w-0 flex-1 flex-wrap items-center gap-1"
+      aria-label="Message settings"
+      role="group"
+    >
+      <div className="min-w-0 max-w-52">
+        <Select
+          value={selectedModelKey}
+          disabled={busy || !modelsLoaded || models.length === 0}
+          onValueChange={(value) => value && onSelectModelKey(value)}
+        >
+          <SelectTrigger
+            id="model-select"
+            size="sm"
+            aria-label="Model"
+            title={model?.display_name}
+            className="h-8 max-w-full cursor-pointer border-0 bg-transparent px-2 text-xs font-medium text-foreground hover:bg-secondary/80 data-[popup-open]:bg-secondary/80"
+          >
+            <SelectValue>
+              <span className="truncate">
+                {!modelsLoaded
+                  ? "Loading models…"
+                  : (model?.display_name ?? "No models enabled")}
+              </span>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent
+            side="top"
+            align="start"
+            sideOffset={8}
+            alignItemWithTrigger={false}
+            className="w-max min-w-48 max-w-[min(22rem,var(--available-width))]"
+          >
+            {models.map((entry) => (
+              <SelectItem key={modelOptionKey(entry)} value={modelOptionKey(entry)} className="text-xs">
+                <span>
+                  {entry.display_name}{" "}
+                  <span className="text-muted-foreground">({entry.provider_label})</span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-          {currentModel?.supports_thinking ? (
-            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-              <Label htmlFor="thinking-select" className="text-xs font-medium text-white/60">
-                Thinking
-              </Label>
-              <Select
-                value={thinkingEffort}
-                onValueChange={(value) => {
-                  if (value) onThinkingEffortChange(value as "low" | "medium" | "high");
-                }}
-              >
-                <SelectTrigger
-                  id="thinking-select"
-                  className="h-9 w-full rounded-full px-3 text-xs capitalize text-white sm:w-auto sm:min-w-28"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {currentModel.thinking_efforts.map((effort) => (
-                    <SelectItem key={effort} value={effort} className="rounded-xl capitalize">
-                      {effort}
-                    </SelectItem>
+      {showThinking ? (
+        <Select
+          value={thinkingEffort}
+          disabled={busy}
+          onValueChange={(value) => {
+            if (value === "low" || value === "medium" || value === "high") {
+              onThinkingEffortChange(value);
+            }
+          }}
+        >
+          <SelectTrigger
+            id="thinking-effort-select"
+            size="sm"
+            aria-label="Thinking effort"
+            title={`Thinking effort: ${thinkingEffort}`}
+            className="h-8 cursor-pointer border-0 bg-transparent px-2 text-xs text-muted-foreground hover:bg-secondary/80 hover:text-foreground data-[popup-open]:bg-secondary/80"
+          >
+            <Sparkles className="size-3.5 text-highlight" aria-hidden="true" />
+            <SelectValue>
+              <span className="capitalize">{thinkingEffort}</span>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent
+            side="top"
+            align="start"
+            sideOffset={8}
+            alignItemWithTrigger={false}
+            className="min-w-36"
+          >
+            {efforts!.map((effort) => (
+              <SelectItem key={effort} value={effort} className="text-xs capitalize">
+                {effort} thinking
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
+
+      {allowAutoReview ? (
+        <Popover.Root>
+          <Popover.Trigger
+            aria-label={`Review mode: ${reviewMode === "manual" ? "manual approval" : "auto review"}`}
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                className="h-8 shrink-0 cursor-pointer gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              />
+            }
+          >
+            <ShieldCheck className="size-3.5 text-highlight" aria-hidden="true" />
+            <span>
+              {reviewMode === "manual" ? "Manual" : "Auto"}
+              <span className="hidden sm:inline">
+                {reviewMode === "manual" ? " approval" : " review"}
+              </span>
+            </span>
+            <ChevronDown className="size-3 opacity-70" aria-hidden="true" />
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Positioner side="top" align="start" sideOffset={8} className="z-50">
+              <Popover.Popup className="w-[min(18.5rem,var(--available-width))] rounded-surface border border-border bg-popover p-2.5 text-popover-foreground shadow-xl outline-none">
+                <Popover.Title className="px-1.5 pb-1.5 text-xs font-semibold text-foreground">
+                  Send Gate review mode
+                </Popover.Title>
+                <fieldset className="space-y-1">
+                  <legend className="sr-only">Review mode</legend>
+                  {REVIEW_MODES.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex cursor-pointer items-start gap-2.5 rounded-control p-2 transition-colors hover:bg-sidebar-accent has-[:checked]:bg-accent/70"
+                    >
+                      <input
+                        type="radio"
+                        name="review-mode"
+                        value={option.value}
+                        checked={reviewMode === option.value}
+                        onChange={() => onReviewModeChange(option.value)}
+                        className="mt-0.5 accent-highlight"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-xs font-medium text-foreground">
+                          {option.label}
+                        </span>
+                        <span className="block text-[11px] leading-snug text-muted-foreground">
+                          {option.description}
+                        </span>
+                      </span>
+                    </label>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-            <Label htmlFor="mode-select" className="text-xs font-medium text-white/60">
-              Mode
-            </Label>
-            <Select
-              value={reviewMode}
-              disabled={!allowAutoReview}
-              onValueChange={(value) => {
-                if (value) onReviewModeChange(value as "manual" | "auto");
-              }}
-            >
-              <SelectTrigger
-                id="mode-select"
-                className="h-9 w-full rounded-full px-3 text-xs text-white sm:w-auto sm:min-w-36"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="manual" className="rounded-xl">
-                  Manual approval
-                </SelectItem>
-                {allowAutoReview ? (
-                  <SelectItem value="auto" className="rounded-xl">
-                    Auto review
-                  </SelectItem>
-                ) : null}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {sessions.length > 0 ? (
-              <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-initial">
-                <Label htmlFor="session-select" className="shrink-0 text-xs font-medium text-white/60">
-                  Session
-                </Label>
-                <Select
-                  value={activeSession?.id ?? ""}
-                  onValueChange={(value) => {
-                    if (value) onSelectSession(value);
-                  }}
-                >
-                  <SelectTrigger
-                    id="session-select"
-                    className="h-9 w-full rounded-full px-3.5 font-mono text-xs text-white/85 sm:w-auto sm:min-w-44"
-                  >
-                    <SelectValue placeholder="Select session" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sessions.map((item) => (
-                      <SelectItem key={item.id} value={item.id} className="rounded-xl font-mono text-xs">
-                        {item.title} ({item.id.slice(0, 8)})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <Badge
-                variant="outline"
-                className="rounded-full border-white/12 bg-white/[0.04] px-3 py-1 font-mono text-[11px] text-white/65"
-              >
-                Starts on scan
-              </Badge>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={onNewSession}
-              className="h-9 cursor-pointer px-3.5"
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              <span>New</span>
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 pt-1 lg:pt-0">
-          <Button
-            type="button"
-            variant={inspectorEnabled ? "default" : "outline"}
-            size="sm"
-            aria-pressed={inspectorEnabled}
-            onClick={onToggleInspector}
-            className="h-9 cursor-pointer px-3.5"
-          >
-            <ShieldCheck className="size-3.5" aria-hidden="true" />
-            <span>{inspectorEnabled ? "Vault Inspector: ON" : "Vault Inspector"}</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant={showMasked ? "default" : "outline"}
-            size="sm"
-            aria-pressed={showMasked}
-            onClick={onToggleShowMasked}
-            className="h-9 cursor-pointer px-3.5"
-          >
-            {showMasked ? (
-              <EyeOff className="size-3.5" aria-hidden="true" />
-            ) : (
-              <Eye className="size-3.5" aria-hidden="true" />
-            )}
-            <span>{showMasked ? "Masked view" : "Unmasked view"}</span>
-          </Button>
-
-          {activeSession ? (
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              disabled={busy}
-              onClick={onEndSession}
-              className="h-9 cursor-pointer px-3.5"
-            >
-              <Trash2 className="size-3.5" aria-hidden="true" />
-              <span>End &amp; wipe vault</span>
-            </Button>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
+                </fieldset>
+              </Popover.Popup>
+            </Popover.Positioner>
+          </Popover.Portal>
+        </Popover.Root>
+      ) : (
+        <span
+          title="Manual approval is enforced by your workspace owner"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-control px-2 text-xs text-muted-foreground"
+        >
+          <ShieldCheck className="size-3.5 text-highlight" aria-hidden="true" />
+          <span>Manual</span>
+        </span>
+      )}
+    </div>
   );
 }

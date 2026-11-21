@@ -1,8 +1,11 @@
 "use client";
 
+import { ArrowRight, ArrowUpRight, ShieldAlert } from "lucide-react";
+import { EntityBadge } from "@/components/nyxora/entity-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MaskedText } from "@/features/review/masked-text";
 import { ENTITY_COLORS, Finding } from "@/features/review/types";
 
 interface ReviewPanelProps {
@@ -41,16 +44,10 @@ export function ReviewPanel({
       elements.push(
         <mark
           key={f.id}
-          className={`rounded border px-1.5 py-0.5 font-medium ${badgeStyle}`}
-          title={`${f.type} • source: ${f.source} • ${f.placeholder}`}
+          className={`rounded-sm border px-1 font-medium ${badgeStyle}`}
+          title={`${f.type} · source: ${f.source} · ${f.placeholder}`}
         >
           {reviewText.slice(f.start, f.end)}
-          <span
-            data-badge="true"
-            className="ml-1.5 select-none text-[10px] uppercase opacity-80"
-          >
-            [{f.type} · {f.source}]
-          </span>
         </mark>,
       );
       cursor = f.end;
@@ -63,82 +60,121 @@ export function ReviewPanel({
     return elements;
   }
 
+  const typeCounts = orderedFindings.reduce<Record<string, number>>((acc, item) => {
+    acc[item.type] = (acc[item.type] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return (
-    <Card className="nyxora-surface rounded-3xl border border-amber-400/35 ring-0">
-      <CardHeader className="space-y-1.5">
-        <div className="flex items-center gap-2">
+    <Card className="gap-4 border-warning/35 bg-card py-4 sm:py-5">
+      <CardHeader className="gap-2 px-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span
+              className="grid size-7 shrink-0 place-items-center rounded-control border border-warning/30 bg-warning/10 text-warning"
+              aria-hidden="true"
+            >
+              <ShieldAlert className="size-4" />
+            </span>
+            <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
+              Review before sending
+            </CardTitle>
+          </div>
           <Badge
             variant="outline"
-            className="rounded-full border-amber-400/40 bg-amber-500/15 px-3 py-0.5 text-xs font-medium text-amber-200"
+            className="border-warning/35 bg-warning/10 text-warning"
           >
-            Needs human approval
+            {orderedFindings.length} {orderedFindings.length === 1 ? "finding" : "findings"} · Awaiting approval
           </Badge>
         </div>
-        <CardTitle className="sr-only">Review detected sensitive findings</CardTitle>
-        <CardDescription className="text-xs text-white/60">
-          Review detected entities and the exact masked payload below. Approve to dispatch only
-          tokenized text, or reject to wipe this pending request without calling any provider.
+        <CardDescription className="text-xs text-muted-foreground sm:text-sm">
+          Verify the detected values and the exact masked payload that will be sent to the AI provider.
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-5">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-relaxed text-white">
-          {renderHighlightedText()}
-        </div>
-
-        <div className="space-y-2.5">
-          <h3 className="text-xs font-medium text-white/65">
-            Detected findings ({orderedFindings.length})
-          </h3>
-          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-            {orderedFindings.map((f) => (
-              <div
-                key={f.id}
-                className="flex items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-xs"
-              >
-                <div className="min-w-0 flex-1 truncate">
-                  <span className="font-medium text-white">{f.text}</span>
-                  <span className="ml-2 font-mono text-[11px] text-[#b8a5ff]">
-                    → {f.placeholder}
-                  </span>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="shrink-0 rounded-full border-white/15 bg-white/[0.04] px-2.5 py-0.5 text-[10px] uppercase text-white/75"
-                >
-                  {f.type} · {f.source}
-                </Badge>
-              </div>
+      <CardContent className="space-y-4 px-4 sm:px-5">
+        {Object.keys(typeCounts).length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {Object.entries(typeCounts).map(([type, count]) => (
+              <span key={type} className="inline-flex items-center gap-1">
+                <EntityBadge entityType={type} />
+                {count > 1 ? (
+                  <span className="font-mono text-[11px] text-muted-foreground">×{count}</span>
+                ) : null}
+              </span>
             ))}
+          </div>
+        ) : null}
+
+        <div className="grid min-w-0 divide-y divide-border rounded-control border border-border bg-background/70 md:grid-cols-2 md:divide-x md:divide-y-0">
+          <div className="min-w-0 p-3.5">
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground">
+              Original text (stays local)
+            </h3>
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Original text"
+              className="max-h-56 overflow-y-auto overscroll-contain whitespace-pre-wrap text-sm leading-relaxed text-foreground wrap-anywhere focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {renderHighlightedText()}
+            </div>
+          </div>
+
+          <div className="min-w-0 p-3.5">
+            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-highlight">
+              <span>Exact text sent to provider</span>
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </h3>
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Text sent on approval"
+              className="max-h-56 overflow-y-auto overscroll-contain whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground/90 wrap-anywhere focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <MaskedText text={maskedPreview} />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-1.5 rounded-2xl border border-white/10 bg-black/40 p-4">
-          <span className="text-xs font-medium text-[#b8a5ff]">
-            Masked preview (outgoing payload)
-          </span>
-          <p className="break-words font-mono text-xs leading-relaxed text-white/80">
-            {maskedPreview}
-          </p>
-        </div>
+        <details className="rounded-control border border-border bg-muted/40 px-3 py-2">
+          <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground">
+            Inspect all {orderedFindings.length} replacement{orderedFindings.length === 1 ? "" : "s"}
+          </summary>
+          <ul className="mt-2.5 divide-y divide-border">
+            {orderedFindings.map((f) => (
+              <li
+                key={f.id}
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2 text-xs wrap-anywhere"
+              >
+                <EntityBadge entityType={f.type} />
+                <span className="font-medium text-foreground">{f.text}</span>
+                <ArrowRight className="size-3 text-muted-foreground" aria-hidden="true" />
+                <code className="font-mono text-token">{f.placeholder}</code>
+                <span className="ml-auto text-[11px] text-muted-foreground">{f.source}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button
             type="button"
             variant="outline"
             disabled={sending}
             onClick={onReject}
-            className="h-10 cursor-pointer border-red-400/35 bg-red-500/10 px-5 text-sm font-medium text-red-200 hover:bg-red-500/20 hover:text-red-100"
+            className="cursor-pointer"
           >
-            Reject (deny)
+            Reject
           </Button>
           <Button
             type="button"
+            variant="highlight"
             disabled={sending}
             onClick={onApproveAndSend}
-            className="h-10 cursor-pointer bg-white px-5 text-sm font-semibold text-zinc-950 hover:bg-white/90"
+            className="cursor-pointer font-semibold"
           >
-            {sending ? "Sending masked payload..." : "Approve & send masked"}
+            {sending ? "Sending…" : "Approve & send masked"}
           </Button>
         </div>
       </CardContent>
