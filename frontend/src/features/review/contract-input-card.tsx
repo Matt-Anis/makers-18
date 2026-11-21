@@ -232,7 +232,7 @@ export function ContractInputCard({
           ? sendLabel
           : step === "clean"
             ? "No sensitive data detected. Sent to the selected provider."
-            : "Enter to send · Shift+Enter for new line · Sensitive data is scrubbed before leaving NYXORA."}
+            : "This model may make mistakes. NYXORA masks sensitive data locally in respect of Law 18-07."}
       </p>
     </div>
   );
