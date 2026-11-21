@@ -3,16 +3,45 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { ChartNoAxesColumn, LogOut, MessageSquare, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChartNoAxesColumn,
+  ChevronDown,
+  LogOut,
+  MessageSquare,
+  ScanLine,
+  ShieldCheck,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { NyxoraWordmark } from "@/components/nyxora/brand";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/chat", label: "Workspace", icon: MessageSquare },
-  { href: "/rules", label: "Owner Settings", icon: SlidersHorizontal, ownerOnly: true },
-  { href: "/metrics", label: "Metrics", icon: ChartNoAxesColumn, ownerOnly: true },
+  { href: "/chat", label: "Workspace", shortLabel: "Chat", icon: MessageSquare },
+  {
+    href: "/rules",
+    label: "Owner Settings",
+    shortLabel: "Settings",
+    icon: SlidersHorizontal,
+    ownerOnly: true,
+  },
+  {
+    href: "/metrics",
+    label: "Metrics",
+    shortLabel: "Metrics",
+    icon: ChartNoAxesColumn,
+    ownerOnly: true,
+  },
 ] as const;
 
 export function DashboardShell({
@@ -61,72 +90,112 @@ export function DashboardShell({
     (item) => !("ownerOnly" in item && item.ownerOnly) || user.role === "owner",
   );
   const displayName = user.full_name || user.email;
+  const firstName = displayName.trim().split(/\s+/)[0] || displayName;
+  const initial = displayName.trim().charAt(0).toUpperCase();
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-40 h-14 shrink-0 border-b border-border bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-            <NyxoraWordmark href="/chat" className="shrink-0 text-sm sm:text-base" />
-
-            <nav aria-label="Primary" className="flex items-center gap-1 overflow-x-auto">
-              {visibleNav.map((item) => {
-                const isActive = pathname === item.href;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-xs font-medium transition-colors sm:px-3",
-                      isActive
-                        ? "bg-sidebar-accent text-foreground"
-                        : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
-                    )}
-                  >
-                    <Icon
-                      className={cn("size-3.5", isActive && "text-highlight")}
-                      aria-hidden="true"
-                    />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-            <div className="hidden items-center gap-2 md:flex">
-              <div
-                aria-hidden="true"
-                className="grid size-7 shrink-0 place-items-center rounded-full border border-highlight/25 bg-accent text-[11px] font-semibold text-highlight"
-              >
-                {displayName.trim().charAt(0).toUpperCase()}
-              </div>
-              <div className="text-left leading-tight">
-                <p className="text-xs font-medium text-foreground">{displayName}</p>
-                <p className="text-[11px] capitalize text-muted-foreground">{user.role}</p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Sign out"
-              title="Sign out"
-              onClick={handleSignOut}
-              className="cursor-pointer text-muted-foreground hover:text-foreground"
+      <div className="sticky top-0 z-40 px-4 pt-3 pb-2 sm:px-6 lg:px-8">
+        <header className="mx-auto grid w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-2 rounded-full border border-border/90 bg-card/85 px-2.5 py-1.5 shadow-lg/25 backdrop-blur-xl sm:grid-cols-[1fr_auto_1fr] sm:px-3">
+          {/* Brand lockup */}
+          <div className="flex items-center gap-2.5 pl-1">
+            <Link
+              href="/chat"
+              aria-label="Back to NYXORA Workspace"
+              className="grid size-8 shrink-0 place-items-center rounded-full border border-highlight/30 bg-accent text-highlight transition-transform duration-150 hover:scale-105"
             >
-              <LogOut className="size-4" aria-hidden="true" />
-            </Button>
+              <ScanLine className="size-4" aria-hidden="true" />
+            </Link>
+            <NyxoraWordmark href="/chat" className="hidden text-xs tracking-[0.24em] sm:inline" />
           </div>
-        </div>
-      </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          {/* Centered segmented pill nav */}
+          <nav
+            aria-label="Primary"
+            className="mx-auto flex items-center gap-0.5 rounded-full border border-border/70 bg-background/75 p-1"
+          >
+            {visibleNav.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 sm:px-3.5",
+                    isActive
+                      ? "border border-highlight/30 bg-accent text-highlight shadow-xs"
+                      : "border border-transparent text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="hidden md:inline">{item.label}</span>
+                  <span className="md:hidden">{item.shortLabel}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Right user account menu */}
+          <div className="flex items-center justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Account menu"
+                className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-background/65 py-1 pr-2.5 pl-1 text-left transition-colors outline-none hover:border-input hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:border-input data-[popup-open]:bg-secondary/80"
+              >
+                <span
+                  aria-hidden="true"
+                  className="grid size-7 shrink-0 place-items-center rounded-full border border-highlight/25 bg-accent text-xs font-semibold text-highlight"
+                >
+                  {initial}
+                </span>
+                <span className="hidden max-w-28 truncate text-xs font-medium text-foreground sm:inline">
+                  {firstName}
+                </span>
+                <ChevronDown
+                  className="size-3.5 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="bottom" align="end" sideOffset={8} className="min-w-56">
+                <DropdownMenuLabel className="space-y-1.5 px-2.5 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-xs font-semibold text-foreground">
+                      {displayName}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="h-5 rounded-full border-highlight/30 bg-accent/70 px-2 text-[10px] capitalize text-highlight"
+                    >
+                      <ShieldCheck className="mr-1 size-2.5" aria-hidden="true" />
+                      {user.role}
+                    </Badge>
+                  </div>
+                  <p className="truncate font-mono text-[11px] font-normal text-muted-foreground">
+                    {user.email}
+                  </p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push("/chat")}>
+                  <MessageSquare aria-hidden="true" />
+                  <span>Open Chat Workspace</span>
+                  <ArrowUpRight className="ml-auto size-3.5 text-muted-foreground" aria-hidden="true" />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+                  <LogOut aria-hidden="true" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+      </div>
+
+      <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
         {title ? (
-          <div className="space-y-1 border-b border-border pb-5">
+          <div className="space-y-1">
             <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               {title}
             </h1>
