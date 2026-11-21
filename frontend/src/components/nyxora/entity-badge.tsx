@@ -10,7 +10,7 @@ export function EntityBadge({
   className?: string;
 }) {
   const key = entityType.trim().toUpperCase() as EntityType;
-  const palette = ENTITY_COLORS[key] ?? "border-white/25 bg-white/10 text-white/85";
+  const palette = ENTITY_COLORS[key] ?? "border-border bg-secondary text-foreground";
 
   return (
     <Badge
