@@ -26,6 +26,7 @@ from app.models import (
     MaskedMessage,
     PendingReview,
     ProviderConfig,
+    SessionVaultSnapshot,
     User,
     WorkspaceSettings,
     utcnow,
@@ -42,6 +43,8 @@ from app.schemas.sessions import (
     ReviewRejectResponse,
     SendMessageRequest,
     SendMessageResponse,
+    SessionInspectorOut,
+    VaultIndexEntryOut,
 )
 from app.security import decrypt_secret, encrypt_secret, get_secret_fernet
 from app.vault.store import (
@@ -215,6 +218,85 @@ def get_session(
         vault_active=vault is not None,
         masked_messages=messages,
         pending_review=pending_review_out,
+    )
+
+
+@router.get("/{session_id}/inspector", response_model=SessionInspectorOut)
+def inspect_session_vault(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    vault_store: VaultStore = Depends(get_vault_store),
+    settings: Settings = Depends(get_settings),
+) -> SessionInspectorOut:
+    """Return the owner's live session vault index, obfuscated turns, and Fernet cipher proof."""
+    gateway_session = _get_owned_session(
+        db,
+        session_id,
+        current_user.id,
+        with_messages=True,
+    )
+    redis_cached = vault_store.exists(gateway_session.id)
+    snapshot = db.get(SessionVaultSnapshot, gateway_session.id)
+    vault = load_session_vault(
+        db,
+        vault_store,
+        gateway_session.id,
+        ttl_seconds=settings.vault_ttl_seconds,
+        ephemeral_only=settings.ephemeral_vaults_only,
+    )
+
+    combined_masked = "\n".join(msg.masked_content.lower() for msg in gateway_session.masked_messages)
+    entries: list[VaultIndexEntryOut] = []
+    if vault is not None:
+        for idx, (placeholder, original_value) in enumerate(vault.to_real.items(), start=1):
+            entity_type = placeholder.strip("[]").split("_", 1)[0] or "CUSTOM"
+            occurrences = combined_masked.count(placeholder.lower()) if combined_masked else 0
+            entries.append(
+                VaultIndexEntryOut(
+                    index=idx,
+                    placeholder=placeholder,
+                    entity_type=entity_type,
+                    original_value=original_value,
+                    occurrences=occurrences,
+                )
+            )
+
+    cipher_blob: str | None = None
+    if snapshot is not None and snapshot.encrypted_blob:
+        cipher_blob = snapshot.encrypted_blob
+    elif vault is not None:
+        cipher_blob = vault_store.encrypt_bytes(vault)
+
+    cipher_preview = (
+        f"{cipher_blob[:64]}..." if cipher_blob and len(cipher_blob) > 64 else cipher_blob
+    )
+    messages = [
+        MaskedMessageOut(
+            id=msg.id,
+            role=msg.role,
+            masked_content=msg.masked_content,
+            unmasked_content=vault.unmask_text(msg.masked_content) if vault else msg.masked_content,
+            created_at=msg.created_at,
+        )
+        for msg in gateway_session.masked_messages
+    ]
+
+    return SessionInspectorOut(
+        session_id=gateway_session.id,
+        title=gateway_session.title,
+        provider=gateway_session.provider,
+        status=GatewaySessionStatus(gateway_session.status),
+        vault_active=vault is not None,
+        redis_cached=redis_cached,
+        snapshot_persisted=snapshot is not None,
+        ephemeral_only=settings.ephemeral_vaults_only,
+        expires_at=gateway_session.expires_at,
+        cipher_preview=cipher_preview,
+        cipher_bytes=len(cipher_blob.encode("utf-8")) if cipher_blob else 0,
+        entry_count=len(entries),
+        entries=entries,
+        messages=messages,
     )
 
 

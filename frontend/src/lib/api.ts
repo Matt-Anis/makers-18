@@ -73,6 +73,31 @@ export interface ReviewRejectResponse {
   review_id: string;
 }
 
+export interface VaultIndexEntry {
+  index: number;
+  placeholder: string;
+  entity_type: string;
+  original_value: string;
+  occurrences: number;
+}
+
+export interface SessionInspector {
+  session_id: string;
+  title: string;
+  provider: string;
+  status: "active" | "ended";
+  vault_active: boolean;
+  redis_cached: boolean;
+  snapshot_persisted: boolean;
+  ephemeral_only: boolean;
+  expires_at: string;
+  cipher_preview: string | null;
+  cipher_bytes: number;
+  entry_count: number;
+  entries: VaultIndexEntry[];
+  messages: MaskedMessage[];
+}
+
 export interface ExtractedDocument {
   filename: string;
   file_type: "pdf" | "docx" | "txt";

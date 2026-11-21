@@ -135,3 +135,32 @@ class ReviewRejectResponse(BaseModel):
     status: Literal["rejected"]
     review_id: str
 
+
+class VaultIndexEntryOut(BaseModel):
+    """Single indexed entry from a user's own per-session redaction vault."""
+
+    index: int
+    placeholder: str
+    entity_type: str
+    original_value: str
+    occurrences: int
+
+
+class SessionInspectorOut(BaseModel):
+    """Owner-scoped privacy inspector snapshot: obfuscated messages, token index, and cipher proof."""
+
+    session_id: str
+    title: str
+    provider: str
+    status: GatewaySessionStatus
+    vault_active: bool
+    redis_cached: bool
+    snapshot_persisted: bool
+    ephemeral_only: bool
+    expires_at: datetime
+    cipher_preview: str | None = None
+    cipher_bytes: int = 0
+    entry_count: int = 0
+    entries: list[VaultIndexEntryOut] = Field(default_factory=list)
+    messages: list[MaskedMessageOut] = Field(default_factory=list)
+

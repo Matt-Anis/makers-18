@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +30,8 @@ interface SessionControlBarProps {
   onEndSession: () => void;
   showMasked: boolean;
   onToggleShowMasked: () => void;
+  inspectorEnabled: boolean;
+  onToggleInspector: () => void;
   busy: boolean;
 }
 
@@ -53,6 +55,8 @@ export function SessionControlBar({
   onEndSession,
   showMasked,
   onToggleShowMasked,
+  inspectorEnabled,
+  onToggleInspector,
   busy,
 }: SessionControlBarProps) {
   const currentModel = models.find((m) => modelOptionKey(m) === selectedModelKey) ?? models[0];
@@ -199,6 +203,18 @@ export function SessionControlBar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-1 lg:pt-0">
+          <Button
+            type="button"
+            variant={inspectorEnabled ? "default" : "outline"}
+            size="sm"
+            aria-pressed={inspectorEnabled}
+            onClick={onToggleInspector}
+            className="h-9 cursor-pointer px-3.5"
+          >
+            <ShieldCheck className="size-3.5" aria-hidden="true" />
+            <span>{inspectorEnabled ? "Vault Inspector: ON" : "Vault Inspector"}</span>
+          </Button>
+
           <Button
             type="button"
             variant={showMasked ? "default" : "outline"}
