@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Newsreader, Plus_Jakarta_Sans } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
 import "./globals.css";
@@ -8,6 +8,12 @@ const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-jakarta",
+});
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  variable: "--font-newsreader",
 });
 
 export const metadata: Metadata = {
@@ -21,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("dark font-sans", plusJakarta.variable)}>
+    <html lang="en" className={cn("dark font-sans", plusJakarta.variable, newsreader.variable)}>
       <body className="relative min-h-screen bg-background text-foreground antialiased">
         <div className="relative z-10 min-h-screen">
           <AuthProvider>{children}</AuthProvider>
