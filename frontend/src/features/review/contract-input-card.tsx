@@ -146,7 +146,7 @@ export function ContractInputCard({
                   variant="ghost"
                   size="icon-sm"
                   disabled={isWorking}
-                  className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                  className="shrink-0 cursor-pointer rounded-full text-muted-foreground hover:text-foreground"
                 />
               }
             >
@@ -186,7 +186,7 @@ export function ContractInputCard({
             disabled={submitDisabled}
             aria-label={sendLabel}
             title={processing ? sendLabel : "Send (Enter) · New line (Shift+Enter)"}
-            className="ml-auto shrink-0 cursor-pointer disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
+            className="ml-auto shrink-0 cursor-pointer rounded-full disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100"
           >
             {processing ? (
               <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden="true" />

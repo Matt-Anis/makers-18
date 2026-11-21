@@ -172,9 +172,9 @@
   --chart-3: #38bdf8;
   --chart-4: #34d399;
   --chart-5: #fbbf24;
-  --radius: 0.75rem;
-  --radius-control: 0.5rem;
-  --radius-surface: 1rem;
+  --radius: 1rem;
+  --radius-control: 0.75rem;
+  --radius-surface: 1.5rem;
 }
 
 @layer base {
