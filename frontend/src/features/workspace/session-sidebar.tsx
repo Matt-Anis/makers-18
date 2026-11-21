@@ -1,0 +1,202 @@
+"use client";
+
+import { Dialog } from "@base-ui/react/dialog";
+import {
+  ChartNoAxesColumn,
+  LogOut,
+  MessageSquare,
+  PanelLeftClose,
+  Plus,
+  SlidersHorizontal,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
+import { NyxoraWordmark } from "@/components/nyxora/brand";
+import { Button } from "@/components/ui/button";
+import type { GatewaySession } from "@/lib/api";
+
+export function SessionSidebar({
+  sessions,
+  activeSessionId,
+  busy,
+  collapsed,
+  onToggleCollapse,
+  onSelect,
+  onNew,
+}: {
+  sessions: GatewaySession[];
+  activeSessionId: string | null;
+  busy: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  onSelect: (id: string) => void;
+  onNew: () => void;
+}) {
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+  const name = user?.full_name || user?.email || "";
+
+  async function handleSignOut() {
+    await signOut();
+    router.replace("/login");
+  }
+
+  const body = (
+    <>
+      <div className="shrink-0 p-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onNew}
+          disabled={busy}
+          className="h-10 w-full cursor-pointer justify-start gap-2.5 border-sidebar-border bg-sidebar-accent/70 px-3 text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          <Plus className="size-4 text-highlight" aria-hidden="true" />
+          <span>New session</span>
+        </Button>
+      </div>
+
+      <nav
+        aria-label="Recent sessions"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 pt-2 pb-3 [scrollbar-gutter:stable]"
+      >
+        <p className="mb-1.5 px-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Recents
+        </p>
+        {sessions.length ? (
+          <ul className="space-y-0.5">
+            {sessions.map((session) => {
+              const isActive = session.id === activeSessionId;
+              return (
+                <li key={session.id}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-current={isActive ? "true" : undefined}
+                    onClick={() => onSelect(session.id)}
+                    title={session.title}
+                    className="group flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-control px-2.5 text-left text-sm text-muted-foreground outline-none transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:opacity-50 aria-[current=true]:bg-sidebar-accent aria-[current=true]:font-medium aria-[current=true]:text-sidebar-foreground lg:min-h-9"
+                  >
+                    <MessageSquare
+                      className="size-3.5 shrink-0 opacity-60 group-aria-[current=true]:text-highlight group-aria-[current=true]:opacity-100"
+                      aria-hidden="true"
+                    />
+                    <span className="truncate">{session.title}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="px-2.5 py-2 text-xs text-muted-foreground">
+            Your private sessions will appear here.
+          </p>
+        )}
+      </nav>
+
+      <footer className="shrink-0 space-y-2 border-t border-sidebar-border p-2.5">
+        {user?.role === "owner" ? (
+          <nav
+            aria-label="Workspace administration"
+            className="space-y-0.5 text-sm text-muted-foreground"
+          >
+            <Link
+              href="/rules"
+              className="flex min-h-9 items-center gap-2.5 rounded-control px-2.5 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            >
+              <SlidersHorizontal className="size-4 shrink-0" aria-hidden="true" />
+              <span>Owner Settings</span>
+            </Link>
+            <Link
+              href="/metrics"
+              className="flex min-h-9 items-center gap-2.5 rounded-control px-2.5 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            >
+              <ChartNoAxesColumn className="size-4 shrink-0" aria-hidden="true" />
+              <span>Metrics</span>
+            </Link>
+          </nav>
+        ) : null}
+
+        <div className="flex items-center gap-2.5 rounded-control px-1.5 py-1">
+          <div
+            aria-hidden="true"
+            className="grid size-8 shrink-0 place-items-center rounded-full border border-highlight/25 bg-accent text-xs font-semibold text-highlight"
+          >
+            {name.trim().charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium leading-tight text-sidebar-foreground" title={user?.email}>
+              {name}
+            </p>
+            <p className="truncate text-[11px] capitalize text-muted-foreground">
+              {user?.role}
+            </p>
+          </div>
+          <Button
+            type="button"
+            aria-label="Sign out"
+            title="Sign out"
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleSignOut}
+            className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+      </footer>
+    </>
+  );
+
+  return (
+    <>
+      {!collapsed ? (
+        <aside
+          aria-label="Session history"
+          className="hidden min-h-0 w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex"
+        >
+          <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border px-3.5">
+            <NyxoraWordmark href="/chat" className="text-sm" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              onClick={onToggleCollapse}
+              className="cursor-pointer text-muted-foreground hover:text-foreground"
+            >
+              <PanelLeftClose className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+          {body}
+        </aside>
+      ) : null}
+
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-background/75 backdrop-blur-xs lg:hidden" />
+        <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-[min(17.5rem,88vw)] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl outline-none lg:hidden">
+          <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border px-3.5">
+            <Dialog.Title className="sr-only">Sessions</Dialog.Title>
+            <NyxoraWordmark href="/chat" className="text-sm" />
+            <Dialog.Close
+              aria-label="Close sessions"
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="cursor-pointer text-muted-foreground hover:text-foreground"
+                />
+              }
+            >
+              <PanelLeftClose className="size-4" aria-hidden="true" />
+            </Dialog.Close>
+          </div>
+          {body}
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </>
+  );
+}
