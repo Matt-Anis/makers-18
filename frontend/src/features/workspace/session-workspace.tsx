@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { DashboardShell } from "@/components/nyxora/dashboard-shell";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContractInputCard } from "@/features/review/contract-input-card";
 import { ConversationThread } from "@/features/review/conversation-thread";
+import { PrivacyInspectorPanel } from "@/features/review/privacy-inspector-panel";
 import { ReviewPanel } from "@/features/review/review-panel";
 import { modelOptionKey, SessionControlBar } from "@/features/review/session-control-bar";
 import {
@@ -27,6 +29,7 @@ import {
   ModelDiscoveryResponse,
   ReviewRejectResponse,
   SendMessageResponse,
+  SessionInspector,
 } from "@/lib/api";
 
 const FALLBACK_MODEL: DiscoveredModel = {
@@ -94,6 +97,10 @@ export function SessionWorkspace() {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showMasked, setShowMasked] = useState(false);
+  const [inspectorEnabled, setInspectorEnabled] = useState(false);
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"chat" | "inspector">("chat");
+  const [inspectorData, setInspectorData] = useState<SessionInspector | null>(null);
+  const [inspectorLoading, setInspectorLoading] = useState(false);
   const skipNextLoadRef = useRef<string | null>(null);
 
   const activeSession = useMemo(
@@ -198,6 +205,35 @@ export function SessionWorkspace() {
     };
   }, [user, activeSessionId]);
 
+  const loadInspector = useCallback(async (sessionId: string) => {
+    setInspectorLoading(true);
+    try {
+      const snapshot = await apiFetch<SessionInspector>(`/sessions/${sessionId}/inspector`);
+      setInspectorData(snapshot);
+    } catch {
+      setInspectorData(null);
+    } finally {
+      setInspectorLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || !inspectorEnabled || !activeSessionId) {
+      return;
+    }
+    let active = true;
+    apiFetch<SessionInspector>(`/sessions/${activeSessionId}/inspector`)
+      .then((snapshot) => {
+        if (active) setInspectorData(snapshot);
+      })
+      .catch(() => {
+        if (active) setInspectorData(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, inspectorEnabled, activeSessionId, activeWorkspaceTab, messages.length]);
+
   const clearPendingReview = useCallback(() => {
     setPendingReviewId(null);
     setReviewText("");
@@ -258,6 +294,7 @@ export function SessionWorkspace() {
         method: "DELETE",
       });
       setMessages([]);
+      setInspectorData(null);
       clearPendingReview();
       setInputText("");
       setFileName(null);
@@ -444,6 +481,7 @@ export function SessionWorkspace() {
         activeSession={activeSession}
         onSelectSession={(id) => {
           setActiveSessionId(id);
+          setInspectorData(null);
           clearPendingReview();
           setStatusMessage(null);
           setStep("idle");
@@ -452,37 +490,124 @@ export function SessionWorkspace() {
         onEndSession={handleEndSession}
         showMasked={showMasked}
         onToggleShowMasked={() => setShowMasked((prev) => !prev)}
+        inspectorEnabled={inspectorEnabled}
+        onToggleInspector={() => {
+          setInspectorEnabled((prev) => {
+            const next = !prev;
+            setActiveWorkspaceTab(next ? "inspector" : "chat");
+            if (!next) setInspectorData(null);
+            return next;
+          });
+        }}
         busy={busy}
       />
 
-      <ContractInputCard
-        inputText={inputText}
-        onInputChange={setInputText}
-        fileName={fileName}
-        fileSummary={fileSummary}
-        uploading={uploadingFile}
-        canScan={hasEnabledModels}
-        onFileAttach={handleFileUpload}
-        step={step}
-        onScan={handleScan}
-      />
+      {inspectorEnabled ? (
+        <Tabs
+          value={activeWorkspaceTab}
+          onValueChange={(value) => {
+            if (value === "chat" || value === "inspector") {
+              setActiveWorkspaceTab(value);
+            }
+          }}
+          className="space-y-4"
+        >
+          <TabsList
+            variant="line"
+            activateOnFocus={false}
+            aria-label="Workspace views"
+            className="flex-nowrap overflow-x-auto border-b border-white/10 pb-1"
+          >
+            <TabsTrigger
+              value="chat"
+              className="flex-none cursor-pointer px-4 py-2 text-xs font-medium text-white/65 data-active:text-white data-active:after:bg-[#a78bfa]"
+            >
+              Chat Workspace
+            </TabsTrigger>
+            <TabsTrigger
+              value="inspector"
+              className="flex-none cursor-pointer px-4 py-2 text-xs font-medium text-white/65 data-active:text-white data-active:after:bg-[#a78bfa]"
+            >
+              Privacy Inspector &amp; Vault
+              {inspectorData ? ` (${inspectorData.entry_count})` : ""}
+            </TabsTrigger>
+          </TabsList>
 
-      {(step === "needs_review" || step === "sending") && findings.length > 0 ? (
-        <ReviewPanel
-          reviewText={reviewText}
-          findings={findings}
-          maskedPreview={maskedPreview}
-          onApproveAndSend={handleApproveAndSend}
-          onReject={handleReject}
-          sending={step === "sending"}
-        />
-      ) : null}
+          <TabsContent value="chat" className="space-y-5">
+            <ContractInputCard
+              inputText={inputText}
+              onInputChange={setInputText}
+              fileName={fileName}
+              fileSummary={fileSummary}
+              uploading={uploadingFile}
+              canScan={hasEnabledModels}
+              onFileAttach={handleFileUpload}
+              step={step}
+              onScan={handleScan}
+            />
 
-      <ConversationThread
-        messages={activeSessionId ? messages : []}
-        showMasked={showMasked}
-        providerLabel={selectedModel.display_name}
-      />
+            {(step === "needs_review" || step === "sending") && findings.length > 0 ? (
+              <ReviewPanel
+                reviewText={reviewText}
+                findings={findings}
+                maskedPreview={maskedPreview}
+                onApproveAndSend={handleApproveAndSend}
+                onReject={handleReject}
+                sending={step === "sending"}
+              />
+            ) : null}
+
+            <ConversationThread
+              messages={activeSessionId ? messages : []}
+              showMasked={showMasked}
+              providerLabel={selectedModel.display_name}
+            />
+          </TabsContent>
+
+          <TabsContent value="inspector">
+            <PrivacyInspectorPanel
+              inspector={activeSessionId ? inspectorData : null}
+              loading={inspectorLoading}
+              hasActiveSession={Boolean(activeSessionId)}
+              providerLabel={selectedModel.display_name}
+              onRefresh={() => {
+                if (activeSessionId) void loadInspector(activeSessionId);
+              }}
+            />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <>
+          <ContractInputCard
+            inputText={inputText}
+            onInputChange={setInputText}
+            fileName={fileName}
+            fileSummary={fileSummary}
+            uploading={uploadingFile}
+            canScan={hasEnabledModels}
+            onFileAttach={handleFileUpload}
+            step={step}
+            onScan={handleScan}
+          />
+
+          {(step === "needs_review" || step === "sending") && findings.length > 0 ? (
+            <ReviewPanel
+              reviewText={reviewText}
+              findings={findings}
+              maskedPreview={maskedPreview}
+              onApproveAndSend={handleApproveAndSend}
+              onReject={handleReject}
+              sending={step === "sending"}
+            />
+          ) : null}
+
+          <ConversationThread
+            messages={activeSessionId ? messages : []}
+            showMasked={showMasked}
+            providerLabel={selectedModel.display_name}
+          />
+        </>
+      )}
     </DashboardShell>
   );
 }
