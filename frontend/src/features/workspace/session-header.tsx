@@ -1,9 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
-import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
-import { Menu } from "@base-ui/react/menu";
 import {
   Check,
   Ellipsis,
@@ -15,7 +13,25 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { GatewaySession } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +66,6 @@ export function SessionHeader({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
   const [savingTitle, setSavingTitle] = useState(false);
-  const menuTrigger = useRef<HTMLButtonElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const title = session?.title ?? (draftTitle.trim() || "New session");
@@ -131,7 +146,7 @@ export function SessionHeader({
         ) : null}
 
         {editingTitle ? (
-          <div className="flex min-w-0 max-w-sm flex-1 items-center gap-1 rounded-control border border-ring bg-card px-2 py-1">
+          <div className="flex min-w-0 max-w-sm flex-1 items-center gap-1 rounded-control border border-ring bg-card px-2.5 py-1">
             <input
               ref={titleInputRef}
               type="text"
@@ -228,9 +243,8 @@ export function SessionHeader({
         </Button>
 
         {session ? (
-          <Menu.Root>
-            <Menu.Trigger
-              ref={menuTrigger}
+          <DropdownMenu>
+            <DropdownMenuTrigger
               aria-label="Session actions"
               title="Session actions"
               render={
@@ -243,81 +257,58 @@ export function SessionHeader({
               }
             >
               <Ellipsis className="size-4" aria-hidden="true" />
-            </Menu.Trigger>
-            <Menu.Portal>
-              <Menu.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
-                <Menu.Popup className="min-w-48 rounded-surface border border-border bg-popover p-1 text-popover-foreground shadow-xl outline-none">
-                  <Menu.Item
-                    disabled={busy}
-                    onClick={startEditing}
-                    className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-control px-2.5 py-1.5 text-xs outline-none data-[highlighted]:bg-sidebar-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-45"
-                  >
-                    <Pencil className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Rename chat</span>
-                  </Menu.Item>
-                  <Menu.Item
-                    onClick={onToggleMasked}
-                    className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-control px-2.5 py-1.5 text-xs outline-none data-[highlighted]:bg-sidebar-accent"
-                  >
-                    {showMasked ? (
-                      <EyeOff className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    ) : (
-                      <Eye className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    )}
-                    <span>{showMasked ? "Show restored text" : "Show masked text"}</span>
-                  </Menu.Item>
-                  <Menu.Separator className="my-1 border-t border-border" />
-                  <Menu.Item
-                    disabled={busy}
-                    onClick={() => setConfirmWipe(true)}
-                    className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-control px-2.5 py-1.5 text-xs text-destructive-foreground outline-none data-[highlighted]:bg-destructive/15 data-[disabled]:pointer-events-none data-[disabled]:opacity-45"
-                  >
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                    <span>End &amp; wipe vault</span>
-                  </Menu.Item>
-                </Menu.Popup>
-              </Menu.Positioner>
-            </Menu.Portal>
-          </Menu.Root>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="bottom" align="end" sideOffset={6} className="min-w-48">
+              <DropdownMenuItem disabled={busy} onClick={startEditing}>
+                <Pencil aria-hidden="true" />
+                <span>Rename chat</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onToggleMasked}>
+                {showMasked ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                <span>{showMasked ? "Show restored text" : "Show masked text"}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={busy}
+                onClick={() => setConfirmWipe(true)}
+              >
+                <Trash2 aria-hidden="true" />
+                <span>End &amp; wipe vault</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : null}
       </div>
 
-      <AlertDialog.Root open={confirmWipe} onOpenChange={setConfirmWipe}>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-background/75 backdrop-blur-xs" />
-          <AlertDialog.Popup
-            finalFocus={menuTrigger}
-            className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-surface border border-border bg-popover p-5 text-popover-foreground shadow-2xl outline-none"
-          >
-            <AlertDialog.Title className="text-base font-semibold text-foreground">
-              End session and wipe vault?
-            </AlertDialog.Title>
-            <AlertDialog.Description className="mt-2 text-sm text-muted-foreground">
+      <AlertDialog open={confirmWipe} onOpenChange={setConfirmWipe}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/15 text-destructive">
+              <Trash2 aria-hidden="true" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>End session and wipe vault?</AlertDialogTitle>
+            <AlertDialogDescription>
               This permanently removes this conversation and destroys its encrypted vault mappings.
-            </AlertDialog.Description>
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <AlertDialog.Close
-                render={<Button type="button" variant="outline" className="cursor-pointer" />}
-              >
-                Cancel
-              </AlertDialog.Close>
-              <AlertDialog.Close
-                render={
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="cursor-pointer"
-                    disabled={busy || !session}
-                    onClick={onEndSession}
-                  />
-                }
-              >
-                End &amp; wipe vault
-              </AlertDialog.Close>
-            </div>
-          </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={busy || !session}
+              onClick={() => {
+                setConfirmWipe(false);
+                onEndSession();
+              }}
+              className="cursor-pointer"
+            >
+              <Trash2 aria-hidden="true" />
+              <span>End &amp; wipe vault</span>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }
