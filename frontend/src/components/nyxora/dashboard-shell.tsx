@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
   ChartNoAxesColumn,
@@ -59,12 +59,46 @@ export function DashboardShell({
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
+  const [navHidden, setNavHidden] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const lastScrollYRef = useRef(0);
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (workspace) return;
+    lastScrollYRef.current = window.scrollY;
+
+    function handleScroll() {
+      const currentY = Math.max(0, window.scrollY);
+      const delta = currentY - lastScrollYRef.current;
+
+      if (currentY <= 48) {
+        setNavHidden(false);
+        lastScrollYRef.current = currentY;
+        return;
+      }
+
+      if (Math.abs(delta) < 6) {
+        return;
+      }
+
+      if (delta > 0 && currentY > 64) {
+        setNavHidden(true);
+      } else if (delta < 0) {
+        setNavHidden(false);
+      }
+
+      lastScrollYRef.current = currentY;
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [workspace]);
 
   async function handleSignOut() {
     await signOut();
@@ -94,9 +128,18 @@ export function DashboardShell({
   const firstName = displayName.trim().split(/\s+/)[0] || displayName;
   const initial = displayName.trim().charAt(0).toUpperCase();
 
+  const isNavHidden = navHidden && !accountMenuOpen;
+
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <div className="sticky top-0 z-40 px-4 pt-3 pb-2 sm:px-6 lg:px-8">
+      <div
+        className={cn(
+          "sticky top-0 z-40 px-4 pt-3 pb-2 transition-[transform,opacity] duration-250 ease-out will-change-transform motion-reduce:transition-none sm:px-6 lg:px-8",
+          isNavHidden
+            ? "pointer-events-none -translate-y-full opacity-0 focus-within:pointer-events-auto focus-within:translate-y-0 focus-within:opacity-100"
+            : "translate-y-0 opacity-100",
+        )}
+      >
         <header className="mx-auto grid w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-2 rounded-full border border-border/90 bg-card/85 px-2.5 py-1.5 shadow-lg/25 backdrop-blur-xl sm:grid-cols-[1fr_auto_1fr] sm:px-3">
           {/* Brand lockup */}
           <div className="flex items-center gap-2.5 pl-1">
@@ -140,7 +183,7 @@ export function DashboardShell({
 
           {/* Right user account menu */}
           <div className="flex items-center justify-end">
-            <DropdownMenu>
+            <DropdownMenu open={accountMenuOpen} onOpenChange={setAccountMenuOpen}>
               <DropdownMenuTrigger
                 aria-label="Account menu"
                 className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-background/65 py-1 pr-2.5 pl-1 text-left transition-colors outline-none hover:border-input hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:border-input data-[popup-open]:bg-secondary/80"
