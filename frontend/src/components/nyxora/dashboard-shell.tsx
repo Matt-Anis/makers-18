@@ -134,10 +134,10 @@ export function DashboardShell({
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <div
         className={cn(
-          "sticky top-0 z-40 px-4 pt-3 pb-2 transition-[transform,opacity] duration-250 ease-out will-change-transform motion-reduce:transition-none sm:px-6 lg:px-8",
+          "sticky top-0 z-40 px-4 pt-3 pb-2 transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none sm:px-6 lg:px-8",
           isNavHidden
-            ? "pointer-events-none -translate-y-full opacity-0 focus-within:pointer-events-auto focus-within:translate-y-0 focus-within:opacity-100"
-            : "translate-y-0 opacity-100",
+            ? "pointer-events-none -translate-y-full focus-within:pointer-events-auto focus-within:translate-y-0"
+            : "translate-y-0",
         )}
       >
         <header className="mx-auto grid w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-2 rounded-full border border-border/90 bg-card/85 px-2.5 py-1.5 shadow-lg/25 backdrop-blur-xl sm:grid-cols-[1fr_auto_1fr] sm:px-3">
