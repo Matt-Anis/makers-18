@@ -353,30 +353,31 @@ export function SessionWorkspace() {
     }
   }
 
-  async function handleEndSession() {
-    if (!activeSession) return;
+  async function handleDeleteSession(sessionId: string) {
     setBusy(true);
     setStatusNotice(null);
     try {
-      await apiFetch<{ status: string }>(`/sessions/${activeSession.id}`, {
+      await apiFetch<{ status: string }>(`/sessions/${sessionId}`, {
         method: "DELETE",
       });
-      setMessages([]);
-      setInspectorResult(null);
-      clearPendingReview();
-      setInputText("");
-      setFileName(null);
-      setFileSummary(null);
-      setStep("idle");
+      if (sessionId === activeSessionId) {
+        setMessages([]);
+        setInspectorResult(null);
+        clearPendingReview();
+        setInputText("");
+        setFileName(null);
+        setFileSummary(null);
+        setStep("idle");
+      }
       setStatusNotice({
         tone: "info",
-        text: "Session ended and its encrypted vault was wiped from storage.",
+        text: "Session deleted and its encrypted vault was wiped from storage.",
       });
       await refreshSessions();
     } catch (error) {
       setStatusNotice({
         tone: "error",
-        text: error instanceof ApiError ? error.message : "Could not end session.",
+        text: error instanceof ApiError ? error.message : "Could not delete session.",
       });
     } finally {
       setBusy(false);
@@ -575,6 +576,7 @@ export function SessionWorkspace() {
           onSelect={handleSelectSession}
           onNew={handleNewSession}
           onRename={handleRenameSession}
+          onDelete={handleDeleteSession}
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -600,7 +602,11 @@ export function SessionWorkspace() {
                   setDraftSessionTitle(nextTitle);
                 }
               }}
-              onEndSession={handleEndSession}
+              onEndSession={() => {
+                if (activeSession) {
+                  void handleDeleteSession(activeSession.id);
+                }
+              }}
             />
 
             {statusNotice ? (

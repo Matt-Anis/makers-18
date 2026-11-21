@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import {
   ChartNoAxesColumn,
@@ -10,6 +11,7 @@ import {
   Pencil,
   Plus,
   SlidersHorizontal,
+  Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +31,7 @@ export function SessionSidebar({
   onSelect,
   onNew,
   onRename,
+  onDelete,
 }: {
   sessions: GatewaySession[];
   activeSessionId: string | null;
@@ -38,6 +41,7 @@ export function SessionSidebar({
   onSelect: (id: string) => void;
   onNew: () => void;
   onRename: (sessionId: string, title: string) => Promise<void>;
+  onDelete: (sessionId: string) => Promise<void>;
 }) {
   const { user, signOut } = useAuth();
   const router = useRouter();
@@ -46,6 +50,7 @@ export function SessionSidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [savingRename, setSavingRename] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<GatewaySession | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -186,7 +191,7 @@ export function SessionSidebar({
                     aria-current={isActive ? "true" : undefined}
                     onClick={() => onSelect(session.id)}
                     title={session.title}
-                    className="flex w-full cursor-pointer flex-col items-start rounded-control px-2.5 py-2 pr-8 text-left outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:opacity-50 aria-[current=true]:bg-sidebar-accent"
+                    className="flex w-full cursor-pointer flex-col items-start rounded-control px-2.5 py-2 pr-14 text-left outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:pointer-events-none disabled:opacity-50 aria-[current=true]:bg-sidebar-accent"
                   >
                     <span
                       className={`w-full truncate text-sm ${
@@ -204,21 +209,38 @@ export function SessionSidebar({
                     ) : null}
                   </button>
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    disabled={busy}
-                    aria-label={`Rename ${session.title}`}
-                    title="Rename chat"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      startEditing(session);
-                    }}
-                    className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-                  >
-                    <Pencil className="size-3" aria-hidden="true" />
-                  </Button>
+                  <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={busy}
+                      aria-label={`Rename ${session.title}`}
+                      title="Rename chat"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditing(session);
+                      }}
+                      className="cursor-pointer text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                    >
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={busy}
+                      aria-label={`Delete ${session.title}`}
+                      title="Delete chat"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPendingDelete(session);
+                      }}
+                      className="cursor-pointer text-destructive/80 hover:bg-destructive/15 hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                    </Button>
+                  </div>
                 </li>
               );
             })}
@@ -335,6 +357,56 @@ export function SessionSidebar({
           {body}
         </Dialog.Popup>
       </Dialog.Portal>
+
+      <AlertDialog.Root
+        open={Boolean(pendingDelete)}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-background/75 backdrop-blur-xs" />
+          <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-surface border border-destructive/30 bg-popover p-5 text-popover-foreground shadow-2xl outline-none">
+            <AlertDialog.Title className="text-base font-semibold text-foreground">
+              Delete conversation and wipe vault?
+            </AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 text-sm text-muted-foreground">
+              This permanently removes{" "}
+              <span className="font-medium text-foreground">
+                &ldquo;{pendingDelete?.title}&rdquo;
+              </span>{" "}
+              and destroys its encrypted vault mappings. This action cannot be undone.
+            </AlertDialog.Description>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <AlertDialog.Close
+                render={<Button type="button" variant="outline" className="cursor-pointer" />}
+              >
+                Cancel
+              </AlertDialog.Close>
+              <AlertDialog.Close
+                render={
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={busy || !pendingDelete}
+                    onClick={() => {
+                      if (pendingDelete) {
+                        const targetId = pendingDelete.id;
+                        setPendingDelete(null);
+                        void onDelete(targetId);
+                      }
+                    }}
+                    className="cursor-pointer"
+                  />
+                }
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+                <span>Delete &amp; wipe vault</span>
+              </AlertDialog.Close>
+            </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </>
   );
 }
